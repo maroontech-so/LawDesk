@@ -1,0 +1,1078 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+        <title>Library Reader</title>
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Source+Serif+Pro:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+        <style>
+            :root {
+                --bg: #fafafa; --surface: #ffffff; --ink: #1a1a1a; --muted: #888;
+                --border: #e5e5e5;
+                --font: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                --serif: "Source Serif Pro", Georgia, "Times New Roman", serif;
+                --toolbar-h: 52px;
+            }
+            * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+            html { font-size: 16px; }
+            body {
+                font-family: var(--font); background: var(--bg); color: var(--ink);
+                min-height: 100vh; display: flex; flex-direction: column;
+            }
+            ::-webkit-scrollbar { width: 8px; height: 8px; }
+            ::-webkit-scrollbar-thumb { background: #d0d0d0; border-radius: 4px; }
+
+            .toolbar {
+                height: var(--toolbar-h); min-height: var(--toolbar-h);
+                background: var(--surface); border-bottom: 1px solid var(--border);
+                display: flex; align-items: center; padding: 0 12px;
+                flex-shrink: 0; gap: 12px;
+                position: sticky; top: 0; z-index: 10;
+            }
+            .back-btn {
+                display: inline-flex; align-items: center; justify-content: center;
+                width: 36px; height: 36px; border-radius: 8px; color: var(--ink);
+                text-decoration: none; flex-shrink: 0;
+            }
+            .back-btn:hover { background: #f0f0f0; }
+            .toolbar-title {
+                font-size: 13px; color: var(--muted); overflow: hidden;
+                text-overflow: ellipsis; white-space: nowrap; flex: 1;
+                min-width: 0; font-weight: 500;
+            }
+            .toolbar-status {
+                font-size: 11px; color: var(--muted); flex-shrink: 0;
+                padding: 3px 8px; background: #f4f4f4; border-radius: 999px;
+            }
+
+            .doc-wrap {
+                flex: 1; overflow-y: auto; background: #f0f0f0;
+                padding: 0 16px 80px;
+            }
+            .doc-sheet {
+                background: #fff; max-width: 780px; margin: 24px auto;
+                padding: 56px 64px 72px; border-radius: 4px;
+                box-shadow: 0 2px 14px rgba(0,0,0,0.06);
+                font-family: var(--serif); font-size: 16px;
+                line-height: 1.8; color: #1a1a1a;
+            }
+
+            /* ── CASE HEADER ─────────────────────────────────────── */
+            .case-header {
+                text-align: center;
+                padding-bottom: 20px; margin-bottom: 24px;
+                border-bottom: 1px solid #ddd;
+            }
+            .case-republic {
+                text-align: center; font-weight: 700; font-size: 14px;
+                letter-spacing: 0.18em; text-transform: uppercase;
+                color: #111; margin-bottom: 20px;
+            }
+            .case-court {
+                text-align: center; font-weight: 700;
+                text-transform: uppercase; letter-spacing: 0.08em;
+                font-size: 15px; color: #111; margin: 6px 0; line-height: 1.5;
+            }
+            .case-coram {
+                text-align: center; font-style: italic;
+                font-size: 13px; color: #333; margin: 10px 0;
+            }
+            .case-number {
+                text-align: center; font-weight: 700;
+                text-transform: uppercase; letter-spacing: 0.05em;
+                font-size: 14px; color: #111; margin: 12px 0;
+            }
+            .case-judge {
+                text-align: center; font-weight: 600;
+                font-size: 14px; color: #111; margin: 4px 0;
+            }
+            .case-date {
+                text-align: center; font-size: 13px; color: #333;
+                margin: 6px 0; text-transform: uppercase; letter-spacing: 0.04em;
+            }
+            .case-divider {
+                text-align: center; font-style: italic; font-weight: 700;
+                letter-spacing: 0.15em; font-size: 13px;
+                color: #666; margin: 22px 0 16px;
+            }
+            .case-parties-block {
+                display: flex; flex-direction: column; gap: 6px;
+                margin: 8px 0 16px; padding: 0 8px;
+            }
+            .party-row {
+                display: flex; align-items: baseline;
+                gap: 6px; font-size: 14px; padding: 3px 0;
+            }
+            .party-name {
+                font-weight: 600; text-transform: uppercase;
+                letter-spacing: 0.02em; color: #111;
+                flex-shrink: 0; max-width: 70%;
+                white-space: normal; line-height: 1.5;
+            }
+            .party-leader {
+                flex: 1 1 auto;
+                border-bottom: 1px dotted #aaa;
+                height: 0.9em; position: relative; top: -3px;
+                min-width: 20px;
+            }
+            .party-role {
+                font-weight: 700; text-transform: uppercase;
+                font-size: 13px; color: #111;
+                flex-shrink: 0; letter-spacing: 0.04em;
+            }
+            .case-paren {
+                text-align: center; font-style: italic;
+                font-size: 12px; color: #555;
+                margin: 18px auto; padding: 0 20px;
+                line-height: 1.6; max-width: 640px;
+            }
+            .case-doctype {
+                text-align: center; font-weight: 700;
+                text-transform: uppercase; letter-spacing: 0.18em;
+                font-size: 16px; color: #111;
+                margin: 28px 0 24px; padding-top: 20px;
+                border-top: 1px solid #eee;
+            }
+
+            /* ── CASE BODY ───────────────────────────────────────── */
+            .case-para {
+                display: flex; gap: 8px;
+                margin-bottom: 16px;
+                text-align: justify; line-height: 1.8;
+            }
+            .case-para-num {
+                flex: 0 0 44px;
+                font-weight: 700; color: #111;
+                text-align: right; padding-right: 4px;
+                font-variant-numeric: tabular-nums;
+            }
+            .case-para-num::before { content: "["; }
+            .case-para-num::after { content: "]"; }
+            .case-para-text { flex: 1; min-width: 0; }
+
+            .case-subheading {
+                text-align: center; font-weight: 700;
+                font-size: 14px; letter-spacing: 0.1em;
+                text-transform: uppercase; color: #111;
+                margin: 32px 0 16px; padding-top: 16px;
+                border-top: 1px solid #f0f0f0;
+            }
+            .case-quote {
+                margin: 16px 0 16px 34px;
+                padding: 14px 22px;
+                border-left: 3px solid #b0b0b0;
+                background: #fafafa;
+                font-style: italic; color: #333;
+                font-size: 15px; line-height: 1.75;
+                border-radius: 0 4px 4px 0;
+            }
+            .case-subitem {
+                display: flex; gap: 6px;
+                margin: 8px 0 8px 30px;
+                text-align: justify; line-height: 1.75;
+            }
+            .case-subitem-marker {
+                flex: 0 0 36px; font-weight: 600; color: #333;
+            }
+            .case-subitem-text { flex: 1; min-width: 0; }
+            .case-plain-para {
+                margin-bottom: 14px; text-align: justify; line-height: 1.8;
+            }
+            .case-signing {
+                margin-top: 44px; padding-top: 24px;
+                border-top: 1px solid #eee;
+                white-space: pre-wrap;
+                text-align: center;
+                font-size: 14px; line-height: 1.9;
+                color: #111;
+            }
+
+            /* ── STATUTE HEADER ─────────────────────────────────── */
+            .statute-header {
+                text-align: center; margin-bottom: 26px;
+                padding-bottom: 20px; border-bottom: 1px solid #ddd;
+            }
+            .statute-republic {
+                font-size: 12px; letter-spacing: 0.18em;
+                text-transform: uppercase; color: #555;
+                font-weight: 600; margin-bottom: 10px;
+            }
+            .statute-title {
+                font-weight: 700; font-size: 20px;
+                text-transform: uppercase; letter-spacing: 0.06em;
+                color: #111; line-height: 1.4;
+            }
+            .statute-cap {
+                font-weight: 700; font-size: 16px;
+                letter-spacing: 0.1em; text-transform: uppercase;
+                color: #333; margin-top: 6px;
+            }
+            .statute-metadata {
+                text-align: center;
+                font-size: 13px;
+                color: #444;
+                margin-top: 10px;
+                line-height: 1.7;
+            }
+            .statute-metadata > div {
+                font-weight: 500;
+                letter-spacing: 0.02em;
+            }
+            .statute-preamble {
+                font-style: italic; font-size: 14px; color: #333;
+                margin: 20px 0 0; line-height: 1.8;
+                padding: 14px 20px; background: #fafafa;
+                border-radius: 6px; border-left: 3px solid #888;
+                text-align: left;
+            }
+
+            /* ── STATUTE TOC ─────────────────────────────────────── */
+            .toc-search-wrap { margin-bottom: 16px; position: relative; }
+            .toc-search-icon {
+                position: absolute; left: 12px; top: 50%;
+                transform: translateY(-50%);
+                color: #999; font-size: 13px; pointer-events: none;
+            }
+            .toc-search {
+                width: 100%; padding: 10px 12px 10px 34px;
+                border: 1px solid #e0e0e0; border-radius: 8px;
+                font-size: 14px; outline: none;
+                font-family: var(--font);
+                background: #fafafa;
+            }
+            .toc-search:focus { border-color: #999; background: #fff; }
+            .toc-part-header {
+                text-align: center;
+                font-size: 12px; font-weight: 700;
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+                color: #666;
+                margin: 26px 0 10px;
+                padding: 10px 0;
+                border-top: 1px solid #ddd;
+                border-bottom: 1px solid #ddd;
+            }
+            .toc-section {
+                display: flex; gap: 12px;
+                padding: 9px 12px;
+                border-radius: 6px;
+                text-decoration: none;
+                color: #222;
+                font-size: 14px;
+                transition: background 0.12s;
+                border-bottom: 1px solid #f4f4f4;
+                font-family: var(--font);
+            }
+            .toc-section:hover { background: #f6f6f6; }
+            .toc-section-num {
+                flex: 0 0 44px;
+                font-weight: 600; color: #888;
+                font-variant-numeric: tabular-nums;
+            }
+            .toc-section-title { flex: 1; }
+
+            /* ── STATUTE SECTION BODY ────────────────────────────── */
+            .statute-part {
+                text-align: center; margin: 36px 0 20px;
+                padding: 10px 0;
+                border-top: 2px solid #111;
+                border-bottom: 2px solid #111;
+            }
+            .statute-part-number {
+                font-weight: 700; text-transform: uppercase;
+                font-size: 14px; letter-spacing: 0.15em; color: #111;
+            }
+            .statute-part-title {
+                display: block; font-weight: 600;
+                font-size: 14px; letter-spacing: 0.06em;
+                text-transform: uppercase; margin-top: 6px;
+                color: #333;
+            }
+            .statute-section { margin: 26px 0; padding-top: 6px; }
+            .statute-section-head {
+                display: flex; gap: 10px; margin-bottom: 12px;
+                align-items: baseline;
+            }
+            .statute-section-num {
+                flex-shrink: 0; font-weight: 700;
+                font-size: 16px; color: #111;
+                font-variant-numeric: tabular-nums;
+            }
+            .statute-section-title {
+                font-weight: 700; font-size: 15px;
+                color: #111; line-height: 1.5;
+            }
+
+            /* Dynamic hierarchy indentation — inline style sets padding */
+            .statute-subsection {
+                display: flex; gap: 6px;
+                margin-bottom: 10px;
+                text-align: justify; line-height: 1.75;
+                position: relative;
+            }
+            .statute-subsection[data-indent="1"]::before,
+            .statute-subsection[data-indent="2"]::before,
+            .statute-subsection[data-indent="3"]::before,
+            .statute-subsection[data-indent="4"]::before,
+            .statute-subsection[data-indent="5"]::before,
+            .statute-subsection[data-indent="6"]::before {
+                content: "";
+                position: absolute;
+                left: -12px; top: 0; bottom: 0;
+                width: 2px;
+                background: #ececec;
+                border-radius: 1px;
+            }
+            .statute-sub-marker {
+                flex: 0 0 auto;
+                min-width: 34px;
+                font-weight: 600; color: #222;
+                padding-right: 4px;
+            }
+            .statute-sub-text { flex: 1; min-width: 0; }
+            .statute-text-block {
+                margin: 12px 0; text-align: justify;
+                line-height: 1.75; color: #222;
+            }
+
+            .statute-nav {
+                display: flex; justify-content: space-between; gap: 12px;
+                margin-top: 40px; padding-top: 24px;
+                border-top: 1px solid #eee;
+            }
+            .statute-nav a, .statute-nav button {
+                padding: 8px 14px;
+                border: 1px solid #ddd; border-radius: 8px;
+                font-size: 13px; color: #333;
+                transition: all 0.15s;
+                background: #fff; cursor: pointer;
+                text-decoration: none;
+                font-family: var(--font);
+            }
+            .statute-nav a:hover, .statute-nav button:hover {
+                background: #f5f5f5; border-color: #bbb;
+            }
+
+            /* ── CONSTITUTION ────────────────────────────────────── */
+            .con-chapter-header {
+                text-align: center; margin-bottom: 30px;
+                padding-bottom: 20px;
+                border-bottom: 2px solid #111;
+            }
+            .con-chapter-label {
+                font-size: 11px; letter-spacing: 0.15em;
+                text-transform: uppercase; color: #888;
+                font-weight: 600; margin-bottom: 6px;
+            }
+            .con-chapter-title {
+                font-size: 19px; font-weight: 700;
+                text-transform: uppercase; letter-spacing: 0.05em;
+                color: #111; line-height: 1.4;
+            }
+            .con-part-label {
+                text-align: center; font-size: 12px;
+                letter-spacing: 0.1em; text-transform: uppercase;
+                color: #555; font-weight: 600;
+                margin: 20px 0; padding: 8px 0;
+                border-bottom: 1px solid #ddd;
+            }
+            .con-article-header { margin-bottom: 20px; text-align: center; }
+            .con-article-title {
+                font-size: 17px; font-weight: 700;
+                line-height: 1.45; color: #111;
+            }
+            .con-article-num { color: #333; margin-right: 6px; }
+            .con-article-body { margin-top: 12px; }
+
+            .con-para {
+                display: flex; gap: 6px;
+                margin-bottom: 10px;
+                text-align: justify; line-height: 1.75;
+                padding-left: 0;
+            }
+            .con-para.lvl-1 { padding-left: 26px; }
+            .con-para.lvl-2 { padding-left: 52px; }
+            .con-para-marker {
+                flex: 0 0 36px;
+                font-weight: 600; color: #111;
+                text-align: left;
+            }
+            .con-para-text { flex: 1; min-width: 0; }
+
+            .nav-article {
+                display: flex; justify-content: space-between; gap: 12px;
+                margin-top: 40px; padding-top: 24px;
+                border-top: 1px solid #eee;
+            }
+            .nav-article a {
+                padding: 8px 14px;
+                border: 1px solid #ddd; border-radius: 8px;
+                font-size: 13px; color: #333;
+            }
+            .nav-article a:hover { background: #f5f5f5; border-color: #bbb; }
+
+            /* ── STATE PANELS ────────────────────────────────────── */
+            .empty, .loading {
+                text-align: center; padding: 60px 20px;
+                color: #888; font-size: 14px;
+            }
+            .spinner {
+                display: inline-block; width: 18px; height: 18px;
+                border: 2px solid #e0e0e0; border-top-color: #666;
+                border-radius: 50%; animation: spin 0.7s linear infinite;
+                vertical-align: middle; margin-right: 8px;
+            }
+            @keyframes spin { to { transform: rotate(360deg); } }
+
+            .offline-panel { text-align: center; padding: 70px 20px; }
+            .offline-panel .offline-icon {
+                font-size: 72px; color: #cbd5e1;
+                opacity: 0.35; margin-bottom: 22px; display: block;
+            }
+            .offline-panel h3 {
+                font-size: 16px; font-weight: 600; color: #333;
+                margin-bottom: 6px;
+            }
+            .offline-panel p {
+                font-size: 13px; color: #888;
+                max-width: 340px; margin: 0 auto 22px;
+                line-height: 1.6;
+            }
+            .offline-panel .reconnect-btn {
+                padding: 10px 24px; background: #111; color: #fff;
+                border-radius: 8px; font-size: 13px; font-weight: 600;
+            }
+
+            @media (max-width: 700px) {
+                .doc-wrap { padding: 0 8px 60px; }
+                .doc-sheet {
+                    padding: 28px 18px 40px; margin: 10px auto;
+                    font-size: 15px; line-height: 1.7;
+                }
+                .case-court { font-size: 13px; }
+                .case-para-num { flex-basis: 34px; }
+                .case-republic { font-size: 12px; }
+                .party-name { font-size: 13px; }
+                .party-role { font-size: 12px; }
+                .con-para-marker { flex-basis: 28px; }
+                .con-para.lvl-1 { padding-left: 16px; }
+                .con-para.lvl-2 { padding-left: 32px; }
+                .toolbar { padding: 0 8px; gap: 6px; }
+                .toolbar-title { font-size: 12px; }
+            }
+        </style>
+    </head>
+    <body>
+        <header class="toolbar">
+            <a href="/" class="back-btn" title="Back">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <div class="toolbar-title" id="toolbarTitle">Document</div>
+            <div class="toolbar-status" id="toolbarStatus">Loading</div>
+        </header>
+
+        <div class="doc-wrap" id="docArea"></div>
+
+        <script>
+            const params = new URLSearchParams(window.location.search);
+            const mode = (params.get("mode") || "").toLowerCase();
+            const sourceUrl = params.get("sourceUrl") || params.get("url") || "";
+            const articleNum = params.get("article");
+            const sectionNum = params.get("section");
+            const titleParam = params.get("title");
+            const displayTitle = titleParam ? decodeURIComponent(titleParam) : "Document";
+
+            const $ = (id) => document.getElementById(id);
+            const toolbarTitle = $("toolbarTitle");
+            const toolbarStatus = $("toolbarStatus");
+            const docArea = $("docArea");
+
+            toolbarTitle.textContent = displayTitle;
+            document.title = displayTitle + " · Library";
+
+            function setStatus(s) { toolbarStatus.textContent = s; }
+            function esc(s) {
+                return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+                    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+                })[c]);
+            }
+            function fmt(text) {
+                let out = esc(text);
+                out = out.replace(/(“|")([^”"]{15,}?)(”|")/g, "“<strong>$2</strong>”");
+                out = out.replace(/\b(v\.|vs\.|supra|ibid|inter alia|prima facie|mutatis mutandis)\b/gi, "<em>$1</em>");
+                return out;
+            }
+            function showLoading(msg) {
+                docArea.innerHTML = `<div class="empty"><span class="spinner"></span>${esc(msg || "Loading…")}</div>`;
+            }
+            function showError(msg) {
+                docArea.innerHTML = `<div class="empty">${esc(msg)}</div>`;
+                setStatus("Error");
+            }
+            function showOffline(retryFn = "location.reload()") {
+                docArea.innerHTML = `<div class="offline-panel">
+                    <i class="fa-solid fa-wifi offline-icon"></i>
+                    <h3>No internet</h3>
+                    <p>We couldn't load this document because the connection is down. Try again once you're back online.</p>
+                    <button class="reconnect-btn" onclick="${retryFn}">Reconnect</button>
+                </div>`;
+                setStatus("Offline");
+            }
+
+            /* ═══════════════════════════════════════════════════
+               CONSTITUTION TOC
+            ═══════════════════════════════════════════════════ */
+            async function renderConstitutionTOC() {
+                setStatus("Table of Contents");
+                toolbarTitle.textContent = "Constitution of Kenya 2010";
+                showLoading("Loading Constitution…");
+                try {
+                    const res = await fetch("/api/constitution/toc");
+                    const data = await res.json();
+                    const chapters = data.chapters || [];
+                    if (!chapters.length) { showError("Constitution not loaded."); return; }
+                    let html = `<div class="doc-sheet">
+                        <div class="con-chapter-header">
+                            <div class="con-chapter-label">The Republic of Kenya</div>
+                            <div class="con-chapter-title">The Constitution of Kenya, 2010</div>
+                        </div>`;
+                    for (const ch of chapters) {
+                        html += `<div style="margin-bottom:28px;">
+                            <div class="con-chapter-label">Chapter ${ch.number}</div>
+                            <div class="con-chapter-title" style="font-size:16px;margin-bottom:12px;">${esc(ch.title)}</div>`;
+                        if (ch.parts && ch.parts.length) {
+                            for (const part of ch.parts) {
+                                html += `<div class="con-part-label" style="text-align:left;border-bottom:none;padding:6px 0;margin:14px 0 6px;">Part ${part.number}: ${esc(part.title)}</div>`;
+                                for (const art of part.articles) {
+                                    html += `<a href="/read.html?mode=constitution&article=${art.number}" style="display:flex;gap:10px;padding:6px 4px;color:#222;text-decoration:none;font-size:14px;border-bottom:1px solid #f4f4f4;">
+                                        <span style="min-width:36px;color:#888;font-weight:600;font-variant-numeric:tabular-nums;">${art.number}.</span>
+                                        <span>${esc(art.title)}</span>
+                                    </a>`;
+                                }
+                            }
+                        }
+                        for (const art of (ch.articles || [])) {
+                            html += `<a href="/read.html?mode=constitution&article=${art.number}" style="display:flex;gap:10px;padding:6px 4px;color:#222;text-decoration:none;font-size:14px;border-bottom:1px solid #f4f4f4;">
+                                <span style="min-width:36px;color:#888;font-weight:600;font-variant-numeric:tabular-nums;">${art.number}.</span>
+                                <span>${esc(art.title)}</span>
+                            </a>`;
+                        }
+                        html += `</div>`;
+                    }
+                    html += `</div>`;
+                    docArea.innerHTML = html;
+                } catch (err) {
+                    showOffline("renderConstitutionTOC()");
+                }
+            }
+
+            /* ═══════════════════════════════════════════════════
+               CONSTITUTION ARTICLE
+            ═══════════════════════════════════════════════════ */
+            async function renderConstitutionArticle(n) {
+                setStatus("Loading article…");
+                showLoading("Loading article…");
+                try {
+                    const res = await fetch(`/api/constitution/article/${n}`);
+                    if (!res.ok) throw new Error("Article not found");
+                    const art = await res.json();
+                    const paras = art.paragraphs || [];
+                    let html = "";
+                    if (art.chapter) {
+                        html += `<div class="con-chapter-header">
+                            <div class="con-chapter-label">Chapter ${art.chapter[0]}</div>
+                            <div class="con-chapter-title">${esc(art.chapter[1])}</div>
+                        </div>`;
+                    }
+                    if (art.part) {
+                        html += `<div class="con-part-label">Part ${art.part[0]} — ${esc(art.part[1])}</div>`;
+                    }
+                    html += `<div class="con-article-header">
+                        <div class="con-article-title">
+                            <span class="con-article-num">${art.number}.</span>${esc(art.title)}
+                        </div>
+                    </div>`;
+                    html += `<div class="con-article-body">`;
+                    for (const p of paras) {
+                        const lvl = Math.min(p.level || 0, 2);
+                        html += `<div class="con-para lvl-${lvl}">
+                            <span class="con-para-marker">${esc(p.marker || "")}</span>
+                            <span class="con-para-text">${fmt(p.text)}</span>
+                        </div>`;
+                    }
+                    html += `</div>`;
+                    const prev = art.number > 1 ? art.number - 1 : null;
+                    const next = art.number < 264 ? art.number + 1 : null;
+                    html += `<div class="nav-article">
+                        ${prev ? `<a href="/read.html?mode=constitution&article=${prev}">← Article ${prev}</a>` : `<span></span>`}
+                        ${next ? `<a href="/read.html?mode=constitution&article=${next}">Article ${next} →</a>` : `<span></span>`}
+                    </div>`;
+                    docArea.innerHTML = `<div class="doc-sheet">${html}</div>`;
+                    toolbarTitle.textContent = `Article ${art.number}. ${art.title}`;
+                    setStatus(`Art. ${art.number}`);
+                    window.scrollTo(0, 0);
+                } catch (err) {
+                    showError("Could not load article: " + err.message);
+                }
+            }
+
+            /* ═══════════════════════════════════════════════════
+               CASE
+            ═══════════════════════════════════════════════════ */
+            function renderPartyRow(partyLine) {
+                const m = partyLine.match(
+                    /^(.+?)(?:[\s\.]{2,}|(?<=[a-zA-Z)])\s+)((?:[1-9]\d?(?:ST|ND|RD|TH)\s+)?(?:PLAINTIFF|DEFENDANT|APPELLANT|RESPONDENT|PETITIONER|INTERESTED\s+PARTY|INTENDED\s+APPELLANT|INTENDED\s+RESPONDENT|APPLICANT))\s*\.?\s*$/i
+                );
+                if (m) {
+                    return `<div class="party-row">
+                        <span class="party-name">${esc(m[1].trim().replace(/[\s\.]{2,}$/, ""))}</span>
+                        <span class="party-leader"></span>
+                        <span class="party-role">${esc(m[2].trim())}</span>
+                    </div>`;
+                }
+                return `<div class="party-row">
+                    <span class="party-name" style="max-width:none;">${esc(partyLine)}</span>
+                </div>`;
+            }
+
+            function renderCaseHeader(c) {
+                let html = "";
+                if (c.republic) html += `<div class="case-republic">${esc(c.republic)}</div>`;
+                for (const line of (c.court_lines || [])) html += `<div class="case-court">${esc(line)}</div>`;
+                if (c.coram) html += `<div class="case-coram">${esc(c.coram)}</div>`;
+                if (c.case_number) html += `<div class="case-number">${esc(c.case_number)}</div>`;
+                for (const j of (c.judges || [])) html += `<div class="case-judge">${esc(j)}</div>`;
+                for (const d of (c.dates || [])) html += `<div class="case-date">${esc(d)}</div>`;
+                if ((c.parties_before || []).length) {
+                    html += `<div class="case-parties-block">`;
+                    for (const p of c.parties_before) html += renderPartyRow(p);
+                    html += `</div>`;
+                }
+                if (c.divider) html += `<div class="case-divider">${esc(c.divider)}</div>`;
+                if ((c.parties_after || []).length) {
+                    html += `<div class="case-parties-block">`;
+                    for (const p of c.parties_after) html += renderPartyRow(p);
+                    html += `</div>`;
+                }
+                if (c.parenthetical) html += `<div class="case-paren">${esc(c.parenthetical)}</div>`;
+                if (c.doc_type) html += `<div class="case-doctype">${esc(c.doc_type)}</div>`;
+                return html;
+            }
+
+            async function renderCase(url) {
+                setStatus("Loading judgment…");
+                showLoading("Loading judgment…");
+                try {
+                    const res = await fetch(`/api/case/structured?url=${encodeURIComponent(url)}`);
+                    if (!res.ok) {
+                        if (res.status === 502) { showOffline("renderCase('${esc(url)}')"); return; }
+                        throw new Error("Could not load case");
+                    }
+                    const c = await res.json();
+                    let html = `<div class="case-header">${renderCaseHeader(c)}</div>`;
+                    html += `<div class="case-body">`;
+                    for (const p of (c.paragraphs || [])) {
+                        if (p.type === "subheading") {
+                            html += `<div class="case-subheading">${esc(p.text)}</div>`;
+                        } else if (p.type === "quote") {
+                            html += `<div class="case-quote">${fmt(p.text)}</div>`;
+                        } else if (p.type === "subitem" && p.marker) {
+                            html += `<div class="case-subitem">
+                                <span class="case-subitem-marker">${esc(p.marker)}</span>
+                                <span class="case-subitem-text">${fmt(p.text)}</span>
+                            </div>`;
+                        } else if (p.number > 0) {
+                            html += `<div class="case-para">
+                                <span class="case-para-num">${p.number}</span>
+                                <span class="case-para-text">${fmt(p.text)}</span>
+                            </div>`;
+                        } else {
+                            html += `<p class="case-plain-para">${fmt(p.text)}</p>`;
+                        }
+                    }
+                    html += `</div>`;
+                    if (c.signing) html += `<div class="case-signing">${fmt(c.signing)}</div>`;
+                    docArea.innerHTML = `<div class="doc-sheet">${html}</div>`;
+                    const n = (c.paragraphs || []).filter(p => p.number > 0).length;
+                    setStatus(`${n} ¶`);
+                    toolbarTitle.textContent = c.title || displayTitle;
+                    window.scrollTo(0, 0);
+                } catch (err) {
+                    showError("Could not load case: " + err.message);
+                }
+            }
+
+            /* ═══════════════════════════════════════════════════
+               STATUTE — helpers for dynamic hierarchy
+            ═══════════════════════════════════════════════════ */
+
+            const statuteCache = {};
+            const _ROMAN_SET = new Set([
+                "i","ii","iii","iv","v","vi","vii","viii","ix","x",
+                "xi","xii","xiii","xiv","xv","xvi","xvii","xviii","xix","xx",
+            ]);
+
+            function _markerInner(marker) {
+                return String(marker || "").replace(/[().\[\]\s]/g, "").toLowerCase();
+            }
+
+            function _rankOfMarker(marker, subsections, idx, prevRank) {
+                if (!marker) return 0;
+                const inner = _markerInner(marker);
+                if (!inner) return 0;
+                if (/^\d{1,3}$/.test(inner)) return 1;
+                if (inner === "i") {
+                    for (let j = idx + 1; j < Math.min(idx + 6, subsections.length); j++) {
+                        const next = _markerInner(subsections[j].marker);
+                        if (!next) continue;
+                        if (_ROMAN_SET.has(next) && next !== "i") return 3;
+                        break;
+                    }
+                    if (prevRank === 2) return 3;
+                    return 2;
+                }
+                if (_ROMAN_SET.has(inner)) return 3;
+                if (/^[a-z]{1,3}$/.test(inner)) return 2;
+                return 1;
+            }
+
+            /* Split a text that has inline markers like
+               "The Authority shall (a) do X; (b) do Y; (c) do Z"
+               into [["", "The Authority shall"], ["(a)", "do X;"], …].
+               We only split at markers that are (i) preceded by a space or
+               start of string, and (ii) NOT immediately preceded by a digit
+               (which would be a cross-reference like "5(a)"). */
+            function splitInlineMarkers(text) {
+                if (!text) return [["", ""]];
+                const markerRe = /(\((?:\d{1,3}|[a-z]{1,3}|[ivxlc]+)\)|(?:\d{1,3}|[a-z]{1,3}|[ivxlc]+)[.)])\s+/g;
+                const matches = [];
+                let m;
+                while ((m = markerRe.exec(text)) !== null) {
+                    const pos = m.index;
+                    // Must be at start or preceded by whitespace
+                    if (pos > 0 && !/\s/.test(text[pos - 1])) continue;
+                    // Reject "5(a)" cross-ref (marker's "(" preceded by digit)
+                    if (pos > 0) {
+                        const ch = text[pos - 1];
+                        if (/\d/.test(ch)) continue;
+                        // If preceded by space, look one more char back
+                        if (pos >= 2 && /\d/.test(text[pos - 2])) {
+                            // "5 (a)" is ambiguous — reject if inside "section X"
+                            // Use a heuristic: reject only when the digit is
+                            // directly adjacent OR the word before is a cross-ref
+                            const before = text.slice(Math.max(0, pos - 20), pos - 2).toLowerCase();
+                            if (/\b(?:section|article|subsection|paragraph|rule|regulation|cap|act|no)\s*$/.test(before)) {
+                                continue;
+                            }
+                        }
+                    }
+                    matches.push(m);
+                }
+                if (!matches.length) return [["", text]];
+                const parts = [];
+                if (matches[0].index > 0) {
+                    const prefix = text.slice(0, matches[0].index).trim();
+                    if (prefix) parts.push(["", prefix]);
+                }
+                for (let i = 0; i < matches.length; i++) {
+                    const start = matches[i].index + matches[i][0].length;
+                    const end = i + 1 < matches.length ? matches[i + 1].index : text.length;
+                    const mk = matches[i][1];
+                    const body = text.slice(start, end).trim();
+                    if (body) parts.push([mk, body]);
+                }
+                return parts;
+            }
+
+            /* Expand subsections — split any that still have inline markers
+               hiding inside their text (backend may not have caught them). */
+            function expandSubsections(subsections) {
+                const out = [];
+                for (const sub of subsections) {
+                    const text = sub.text || "";
+                    const parts = splitInlineMarkers(text);
+                    if (parts.length > 1) {
+                        // First part (marker "") belongs to the current marker
+                        if (parts[0][0] === "" && parts[0][1]) {
+                            out.push({ ...sub, marker: sub.marker || "", text: parts[0][1] });
+                            for (let i = 1; i < parts.length; i++) {
+                                const [mk, t] = parts[i];
+                                if (mk && t) out.push({ ...sub, marker: mk, text: t });
+                            }
+                        } else {
+                            // No leading prefix — all parts are markers
+                            for (const [mk, t] of parts) {
+                                if (mk && t) out.push({ ...sub, marker: mk, text: t });
+                            }
+                        }
+                    } else {
+                        out.push(sub);
+                    }
+                }
+                return out;
+            }
+
+            function computeIndents(subsections) {
+                const stack = [];
+                const result = [];
+                let lastIndent = 0;
+                let prevRank = 0;
+                for (let i = 0; i < subsections.length; i++) {
+                    const sub = subsections[i];
+                    if (!sub.marker) {
+                        result.push({ ...sub, computedIndent: lastIndent });
+                        continue;
+                    }
+                    const rank = _rankOfMarker(sub.marker, subsections, i, prevRank);
+                    if (rank === 0) {
+                        result.push({ ...sub, computedIndent: lastIndent });
+                        continue;
+                    }
+                    while (stack.length && stack[stack.length - 1] >= rank) stack.pop();
+                    stack.push(rank);
+                    const indent = stack.length - 1;
+                    lastIndent = indent;
+                    prevRank = rank;
+                    result.push({ ...sub, computedIndent: indent });
+                }
+                return result;
+            }
+
+            const _INDENT_STEP_PX = 24;
+            const _INDENT_MAX_LEVEL = 6;
+
+            function _renderSubsection(sub) {
+                if (!sub.marker) {
+                    const indent = Math.min(sub.computedIndent || 0, _INDENT_MAX_LEVEL);
+                    const pad = indent * _INDENT_STEP_PX;
+                    return `<p class="statute-text-block" style="padding-left:${pad}px;">${fmt(sub.text)}</p>`;
+                }
+                const indent = Math.min(sub.computedIndent || 0, _INDENT_MAX_LEVEL);
+                const pad = indent * _INDENT_STEP_PX;
+                const attr = indent > 0 ? `data-indent="${indent}"` : "";
+                return `<div class="statute-subsection" ${attr} style="padding-left:${pad}px;">
+                    <span class="statute-sub-marker">${esc(sub.marker)}</span>
+                    <span class="statute-sub-text">${fmt(sub.text)}</span>
+                </div>`;
+            }
+
+            /* ═══════════════════════════════════════════════════
+               STATUTE — fetcher + renderers
+            ═══════════════════════════════════════════════════ */
+
+            async function getStatute(url) {
+                if (statuteCache[url]) return statuteCache[url];
+                try {
+                    const raw = sessionStorage.getItem("statute:" + url);
+                    if (raw) {
+                        statuteCache[url] = JSON.parse(raw);
+                        return statuteCache[url];
+                    }
+                } catch (_) {}
+                const res = await fetch(`/api/statute/structured?url=${encodeURIComponent(url)}`);
+                if (!res.ok) {
+                    if (res.status === 502 || res.status === 404) {
+                        throw new Error(res.status === 404 ? "offline" : "Could not load statute");
+                    }
+                    if (res.status === 409) throw new Error("Chrome detected — will be refetched");
+                    throw new Error("Could not load statute");
+                }
+                const data = await res.json();
+                statuteCache[url] = data;
+                try {
+                    sessionStorage.setItem("statute:" + url, JSON.stringify(data));
+                } catch (_) {}
+                return data;
+            }
+
+            function renderStatuteHeader(data) {
+                let html = `<div class="statute-header">`;
+                html += `<div class="statute-republic">LAWS OF KENYA</div>`;
+                html += `<div class="statute-title">${esc(data.title || "")}</div>`;
+                if (data.citation) html += `<div class="statute-cap">${esc(data.citation)}</div>`;
+                if (data.metadata && data.metadata.length) {
+                    html += `<div class="statute-metadata">`;
+                    for (const m of data.metadata) {
+                        html += `<div>${esc(m.label)}${m.value ? " on " + esc(m.value) : ""}</div>`;
+                    }
+                    html += `</div>`;
+                }
+                if (data.preamble) {
+                    html += `<div class="statute-preamble">${fmt(data.preamble)}</div>`;
+                }
+                html += `</div>`;
+                return html;
+            }
+
+            async function renderStatuteTOC(url) {
+                setStatus("Table of Contents");
+                showLoading("Loading statute…");
+                try {
+                    const data = await getStatute(url);
+                    toolbarTitle.textContent = data.title || displayTitle;
+
+                    const parts = [];
+                    const standalone = [];
+                    let currentPart = null;
+                    for (const item of (data.items || [])) {
+                        if (item.type === "part") {
+                            currentPart = { ...item, sections: [] };
+                            parts.push(currentPart);
+                        } else if (item.type === "section") {
+                            if (currentPart) currentPart.sections.push(item);
+                            else standalone.push(item);
+                        }
+                    }
+                    const totalSections = standalone.length +
+                        parts.reduce((s, p) => s + p.sections.length, 0);
+
+                    if (totalSections === 0 && !data.raw_body) {
+                        showError("No section structure detected");
+                        return;
+                    }
+
+                    const header = renderStatuteHeader(data);
+                    let html = `<div class="doc-sheet">${header}`;
+                    if (totalSections > 0) {
+                        html += `<div class="toc-search-wrap">
+                            <i class="fa-solid fa-search toc-search-icon"></i>
+                            <input id="tocSearch" class="toc-search"
+                                   placeholder="Search sections by number or keyword…" />
+                        </div><div id="tocList">`;
+                        if (standalone.length) {
+                            for (const sec of standalone) {
+                                html += `<a class="toc-section" data-sec="${sec.number}"
+                                              data-title="${esc(sec.title.toLowerCase())}"
+                                              href="/read.html?mode=statute&sourceUrl=${encodeURIComponent(url)}&section=${sec.number}">
+                                    <span class="toc-section-num">${sec.number}.</span>
+                                    <span class="toc-section-title">${esc(sec.title)}</span>
+                                </a>`;
+                            }
+                        }
+                        for (const part of parts) {
+                            html += `<div class="toc-part-header">${esc(part.number)}${part.title ? " — " + esc(part.title) : ""}</div>`;
+                            for (const sec of part.sections) {
+                                html += `<a class="toc-section" data-sec="${sec.number}"
+                                              data-title="${esc(sec.title.toLowerCase())}"
+                                              href="/read.html?mode=statute&sourceUrl=${encodeURIComponent(url)}&section=${sec.number}">
+                                    <span class="toc-section-num">${sec.number}.</span>
+                                    <span class="toc-section-title">${esc(sec.title)}</span>
+                                </a>`;
+                            }
+                        }
+                        html += `</div>`;
+                    } else {
+                        html += `<div class="statute-text-block" style="white-space:pre-wrap;">${fmt(data.raw_body)}</div>`;
+                    }
+                    html += `</div>`;
+                    docArea.innerHTML = html;
+                    setStatus(`${totalSections} sections`);
+
+                    const tocSearch = document.getElementById("tocSearch");
+                    if (tocSearch) {
+                        tocSearch.addEventListener("input", () => {
+                            const q = tocSearch.value.trim().toLowerCase();
+                            document.querySelectorAll(".toc-section").forEach((el) => {
+                                const num = el.dataset.sec || "";
+                                const title = el.dataset.title || "";
+                                el.style.display = (!q || num.includes(q) || title.includes(q)) ? "" : "none";
+                            });
+                        });
+                    }
+                } catch (err) {
+                    if (err.message === "offline") showOffline(`renderStatuteTOC('${esc(url)}')`);
+                    else if (err.message.includes("Chrome")) showError("This act needs to be re-fetched. Please try again in a moment.");
+                    else showError("Could not load statute: " + err.message);
+                }
+            }
+
+            async function renderStatuteSection(url, n) {
+                setStatus("Loading section…");
+                showLoading("Loading section…");
+                try {
+                    const data = await getStatute(url);
+                    toolbarTitle.textContent = data.title || displayTitle;
+
+                    const allSections = [];
+                    let currentPart = null;
+                    let target = null;
+                    let targetPart = null;
+                    for (const item of (data.items || [])) {
+                        if (item.type === "part") currentPart = item;
+                        else if (item.type === "section") {
+                            allSections.push({ section: item, part: currentPart });
+                            if (String(item.number) === String(n)) {
+                                target = item;
+                                targetPart = currentPart;
+                            }
+                        }
+                    }
+                    if (!target) { showError("Section not found"); return; }
+
+                    const idx = allSections.findIndex(e => e.section.number === target.number);
+                    const prev = idx > 0 ? allSections[idx - 1].section.number : null;
+                    const next = idx < allSections.length - 1 ? allSections[idx + 1].section.number : null;
+
+                    let html = `<div class="doc-sheet">
+                        <div class="statute-header" style="padding-bottom:14px;">
+                            <div class="statute-republic">LAWS OF KENYA</div>
+                            <div class="statute-title">${esc(data.title || "")}</div>
+                            ${data.citation ? `<div class="statute-cap">${esc(data.citation)}</div>` : ""}
+                        </div>`;
+                    if (targetPart) {
+                        html += `<div class="statute-part">
+                            <div class="statute-part-number">${esc(targetPart.number)}</div>
+                            ${targetPart.title ? `<span class="statute-part-title">${esc(targetPart.title)}</span>` : ""}
+                        </div>`;
+                    }
+                    html += `<div class="statute-section">
+                        <div class="statute-section-head">
+                            <span class="statute-section-num">${target.number}.</span>
+                            <span class="statute-section-title">${esc(target.title)}</span>
+                        </div>`;
+
+                    // ── Expand inline markers, then compute dynamic indents ──
+                    const expanded = expandSubsections(target.subsections || []);
+                    const computed = computeIndents(expanded);
+                    for (const sub of computed) html += _renderSubsection(sub);
+
+                    html += `</div>`;
+
+                    html += `<div class="statute-nav">
+                        <button onclick="window.location.href='/read.html?mode=statute&sourceUrl=${encodeURIComponent(url)}'">← Contents</button>
+                        <div style="display:flex;gap:8px;">
+                            ${prev !== null ? `<a href="/read.html?mode=statute&sourceUrl=${encodeURIComponent(url)}&section=${prev}">← ${prev}.</a>` : ""}
+                            ${next !== null ? `<a href="/read.html?mode=statute&sourceUrl=${encodeURIComponent(url)}&section=${next}">${next}. →</a>` : ""}
+                        </div>
+                    </div></div>`;
+                    docArea.innerHTML = html;
+                    setStatus(`Section ${target.number}`);
+                    window.scrollTo(0, 0);
+                } catch (err) {
+                    if (err.message === "offline") showOffline(`renderStatuteSection('${esc(url)}', '${esc(n)}')`);
+                    else if (err.message.includes("Chrome")) showError("This act needs to be re-fetched. Please try again in a moment.");
+                    else showError("Could not load section: " + err.message);
+                }
+            }
+
+            /* ═══════════════════════════════════════════════════
+               ROUTER
+            ═══════════════════════════════════════════════════ */
+            (async () => {
+                if (mode === "constitution") {
+                    if (articleNum) await renderConstitutionArticle(articleNum);
+                    else await renderConstitutionTOC();
+                    return;
+                }
+                if (mode === "case" && sourceUrl) { await renderCase(sourceUrl); return; }
+                if (mode === "statute" && sourceUrl) {
+                    if (sectionNum) await renderStatuteSection(sourceUrl, sectionNum);
+                    else await renderStatuteTOC(sourceUrl);
+                    return;
+                }
+                showError("No document specified.");
+            })();
+        </script>
+    </body>
+</html>
