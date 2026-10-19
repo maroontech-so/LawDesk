@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+# At the top of your python script:
+from flask_cors import CORS
+
+
 import hashlib
 import json
 import logging
@@ -12,6 +16,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from urllib.parse import quote, urljoin, urlparse
+
 
 import requests
 from bs4 import BeautifulSoup
@@ -64,6 +69,8 @@ if not _HAS_FITZ:
     log.warning("PyMuPDF not installed — install with: pip install PyMuPDF")
 
 app = Flask(__name__, template_folder=str(TEMPLATE_DIR))
+# Right after `app = Flask(...)`:
+CORS(app)
 app.config["JSON_SORT_KEYS"] = False
 app.config["JSONIFY_PRETTYPRINT_REGULAR"] = False
 app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 86400
@@ -2532,5 +2539,5 @@ load_acts_manifest()
 start_bootstrap()
 
 if __name__ == "__main__":
-    log.info("Library: http://%s:%s", HOST, PORT)
-    app.run(host=HOST, port=PORT, debug=False, threaded=True, use_reloader=False)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
