@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-# At the top of your python script:
 from flask_cors import CORS
-
 
 import hashlib
 import json
@@ -17,7 +15,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from urllib.parse import quote, urljoin, urlparse
 
-
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
@@ -31,6 +28,27 @@ try:
     _HAS_FITZ = True
 except ImportError:
     _HAS_FITZ = False
+
+try:
+    from ddgs import DDGS  # type: ignore
+    _HAS_DDGS = True
+    _DDGS_LIB = "ddgs"
+except ImportError:
+    try:
+        from duckduckgo_search import DDGS  # type: ignore
+        _HAS_DDGS = True
+        _DDGS_LIB = "duckduckgo_search"
+    except ImportError:
+        DDGS = None  # type: ignore
+        _HAS_DDGS = False
+        _DDGS_LIB = None
+
+try:
+    from curl_cffi import requests as curl_requests  # type: ignore
+    _HAS_CURL_CFFI = True
+except ImportError:
+    curl_requests = None  # type: ignore
+    _HAS_CURL_CFFI = False
 
 load_dotenv()
 
@@ -56,20 +74,103 @@ OFFICIAL_HOSTS = {
     "parliament.go.ke", "www.parliament.go.ke",
 }
 
-USER_AGENT = "Library/6.0 (public legal research)"
+USER_AGENT = (
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+)
+
+BROWSER_HEADERS = {
+    "User-Agent": USER_AGENT,
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,"
+              "image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Cache-Control": "max-age=0",
+    "DNT": "1",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Sec-CH-UA": '"Chromium";v="120", "Google Chrome";v="120", "Not-A.Brand";v="99"',
+    "Sec-CH-UA-Mobile": "?0",
+    "Sec-CH-UA-Platform": '"Linux"',
+}
+
 PAGE_CACHE_SECONDS = 30 * 24 * 3600
 HTTP_TIMEOUT = (5, 30)
 ONLINE_CACHE_SECONDS = 30
+SEARCH_CACHE_SECONDS = 12 * 3600
 SCHEMA_VERSIONS = {"case": 2, "statute": 10}
+
+SCORE_THRESHOLDS = {"statute": 40.0, "case": 20.0, "constitution": 0.0, "all": 20.0}
+
+_RULE_QUERY_WORDS = (
+    "rule", "rules", "regulation", "regulations",
+    "notice", "notices", "order", "orders", "legal",
+)
+
+_CAP_RE = re.compile(r"\bcap\.?\s*(\d+[A-Za-z]?)\b", re.I)
+_ACT_NO_RE = re.compile(r"\bno\.?\s*(\d+)\s+of\s+(\d{4})\b", re.I)
+_AKN_LN_RE = re.compile(r"/akn/ke/act/ln/", re.I)
+_AKN_RULE_RE = re.compile(r"/akn/ke/act/rule/", re.I)
+
+_STOPWORDS = {
+    "the", "a", "an", "of", "and", "or", "in", "on", "at", "to", "for",
+    "with", "by", "from", "is", "are", "was", "were", "be", "been",
+    "this", "that", "these", "those", "it", "its", "as", "v", "vs",
+    "law", "laws", "kenya", "act",
+}
+
+_TITLE_NOISE_PREFIX_RE = re.compile(
+    r"^(?:"
+    r"amended\s+by|revised\s+by|revised\s+and|"
+    r"published\s+in|assented\s+to|commenced\s+on|amended\s+on|in\s+force\s+on|"
+    r"this\s+act|this\s+document|this\s+judgment|this\s+ruling|"
+    r"downloaded\s+from|printed\s+from|source:|cite\s+as:|report\s+as:|"
+    r"share\s+this|share\s+on"
+    r")\b",
+    re.I,
+)
+
+_TITLE_SUFFIX_RE = re.compile(
+    r"\s*[-–—|:]\s*(?:"
+    r"Kenya\s+Law|Laws?\s+of\s+Kenya|New\.?kenyalaw\.?org|"
+    r"KenyaLaw|www\.kenyalaw\.org|kenyalaw\.org"
+    r")\s*$",
+    re.I,
+)
+
+_SHARE_NOISE_RE = re.compile(
+    r"Share\s+this\s+document\s+on\s+\S+\s+opens\s+in\s+new\s+tab\.?\s*",
+    re.I,
+)
+_DOWNLOAD_NOISE_RE = re.compile(r"Downloaded\s+from\s+https?://\S+\s*", re.I)
+
+_STATUTE_MARKERS = [
+    r"(?m)^An\s+Act\s+of\s+Parliament\b",
+    r"(?m)^WHEREAS\b",
+    r"(?m)^ENACTED\s+by\b",
+    r"(?m)^Enacted\s+by\b",
+]
+
+_CASE_MARKERS = [
+    r"\bREPUBLIC\s+OF\s+KENYA\b",
+    r"\bIN\s+THE\s+[A-Z][A-Z\s]+\b",
+]
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("library")
 
 if not _HAS_FITZ:
     log.warning("PyMuPDF not installed — install with: pip install PyMuPDF")
+if not _HAS_DDGS:
+    log.warning("ddgs not installed — live search disabled (pip install ddgs)")
+if not _HAS_CURL_CFFI:
+    log.warning("curl_cffi not installed — CDN-blocked pages may fail (pip install curl_cffi)")
 
 app = Flask(__name__, template_folder=str(TEMPLATE_DIR))
-# Right after `app = Flask(...)`:
 CORS(app)
 app.config["JSON_SORT_KEYS"] = False
 app.config["JSONIFY_PRETTYPRINT_REGULAR"] = False
@@ -81,6 +182,9 @@ BACKGROUND_POOL = ThreadPoolExecutor(max_workers=4, thread_name_prefix="bg")
 
 _online_cache: dict = {"value": None, "checked": 0.0}
 _online_lock = threading.Lock()
+
+_last_search_error: str | None = None
+_last_search_error_lock = threading.Lock()
 
 bootstrap_lock = threading.Lock()
 bootstrap_started = False
@@ -447,6 +551,17 @@ def is_act_url(url: str) -> bool:
     return bool(_ACT_URL_RE.search(url))
 
 
+def classify_url_kind(url: str) -> str | None:
+    """Return 'case' | 'statute' | None — purely from the URL shape."""
+    if not url:
+        return None
+    if is_individual_case_url(url):
+        return "case"
+    if is_act_url(url):
+        return "statute"
+    return None
+
+
 def determine_kind(url: str, hint: str | None = None) -> str:
     if is_individual_case_url(url):
         return "case"
@@ -457,6 +572,103 @@ def determine_kind(url: str, hint: str | None = None) -> str:
     if hint in ("constitution", "statute", "case"):
         return hint
     return "case"
+
+
+def significant_tokens(text: str) -> set[str]:
+    toks = re.findall(r"[a-z0-9]+", (text or "").lower())
+    return {t for t in toks if len(t) >= 2 and t not in _STOPWORDS}
+
+
+def extract_year_from_url(url: str) -> str:
+    m = re.search(r"/(\d{4})/", url or "")
+    if m:
+        y = int(m.group(1))
+        if 1900 <= y <= 2100:
+            return str(y)
+    return ""
+
+
+# ============================================================
+# TITLE CLEANING
+# ============================================================
+
+def _clean_title(raw: str) -> str:
+    t = clean(raw)
+    if not t:
+        return ""
+    t = _TITLE_SUFFIX_RE.sub("", t).strip()
+    if not t:
+        return ""
+    if _TITLE_NOISE_PREFIX_RE.match(t):
+        return ""
+    if "amended by" in t.lower() and len(t) > 80:
+        return ""
+    if len(t) < 3 or len(t) > 200:
+        return ""
+    return t
+
+
+def _clean_serp_title(raw: str) -> str:
+    return _clean_title(raw)
+
+
+def _extract_page_title(soup, url: str) -> str:
+    title_el = soup.find("title")
+    if title_el:
+        t = _clean_title(title_el.get_text(" ", strip=True))
+        if t:
+            return t
+    for sel in (
+        "h1.akn-title", "h1.akn-doc-title", ".akn-doc-title",
+        "h1.document-title", ".document-title", "h1.doc-title",
+        "#doc-title", ".akn-doc > h1", "h1.title", ".act-title",
+    ):
+        try:
+            el = soup.select_one(sel)
+        except Exception:
+            continue
+        if el:
+            t = _clean_title(el.get_text(" ", strip=True))
+            if t:
+                return t
+    for h in soup.find_all(["h1", "h2"]):
+        t = _clean_title(h.get_text(" ", strip=True))
+        if t:
+            return t
+    return ""
+
+
+def _strip_body_noise(body: str, kind: str, url: str) -> str:
+    """Strip share widgets and leading amendment notices — idempotent."""
+    if not body:
+        return body
+    original = body
+
+    body = _SHARE_NOISE_RE.sub("", body)
+    body = _DOWNLOAD_NOISE_RE.sub("", body)
+    body = re.sub(r"\n{3,}", "\n\n", body).strip()
+
+    if kind == "statute":
+        for marker in _STATUTE_MARKERS:
+            m = re.search(marker, body)
+            if m and m.start() < 2000:
+                cleaned = body[m.start():].strip()
+                if len(cleaned) >= 50:
+                    return cleaned
+        body = re.sub(
+            r"^(?:Amended\s+by|Revised\s+by|Revised\s+and|"
+            r"Published\s+in|Assented\s+to|Commenced\s+on|"
+            r"Amended\s+on|In\s+force\s+on)\s+[^\n]{0,400}?\n+",
+            "", body, flags=re.I,
+        ).strip()
+    elif kind == "case":
+        for marker in _CASE_MARKERS:
+            m = re.search(marker, body, re.I)
+            if m and m.start() < 1000:
+                cleaned = body[m.start():].strip()
+                if len(cleaned) >= 50:
+                    return cleaned
+    return body if body else original
 
 
 # ============================================================
@@ -651,23 +863,106 @@ def _all_indexes() -> list[MemoryIndex]:
 # ============================================================
 
 
-def check_online(timeout: float = 2.0, force: bool = False) -> bool:
+def check_online(timeout: float = 3.0, force: bool = False) -> bool:
+    """
+    Robust connectivity probe. GET (not HEAD) because CDNs often return
+    502/503 for HEAD even when the site works fine via GET.
+    """
     now = time.time()
     with _online_lock:
         if (not force and _online_cache["value"] is not None
                 and now - _online_cache["checked"] < ONLINE_CACHE_SECONDS):
             return _online_cache["value"]
+
     ok = False
+
+    # 1) DuckDuckGo — matches our DDGS provider
     try:
-        r = requests.head("https://new.kenyalaw.org", timeout=timeout,
-                          allow_redirects=True, headers={"User-Agent": USER_AGENT})
-        ok = r.status_code < 500
+        r = requests.get("https://duckduckgo.com/", timeout=timeout,
+                         allow_redirects=True, headers=BROWSER_HEADERS)
+        if r.status_code < 500:
+            ok = True
     except Exception:
-        ok = False
+        pass
+
+    # 2) Kenya Law
+    if not ok:
+        try:
+            r = requests.get("https://new.kenyalaw.org/", timeout=timeout,
+                             allow_redirects=True, headers=BROWSER_HEADERS,
+                             stream=True)
+            if r.status_code < 500:
+                ok = True
+            r.close()
+        except Exception:
+            pass
+
+    # 3) Cloudflare DNS
+    if not ok:
+        try:
+            r = requests.get(
+                "https://1.1.1.1/dns-query?name=kenyalaw.org&type=A",
+                timeout=timeout, headers={"accept": "application/dns-json"},
+            )
+            if r.status_code < 500 and r.text.strip().startswith("{"):
+                ok = True
+        except Exception:
+            pass
+
     with _online_lock:
         _online_cache["value"] = ok
         _online_cache["checked"] = now
     return ok
+
+
+# ============================================================
+# BROWSER-IMPERSONATING HTTP FETCH
+# ============================================================
+
+
+def fetch_html(url: str, timeout: tuple = HTTP_TIMEOUT) -> tuple[str, str] | None:
+    """Fetch HTML with curl_cffi Chrome impersonation (falls back to requests)."""
+    url = safe_url(url)
+    if not url:
+        return None
+
+    headers = dict(BROWSER_HEADERS)
+    headers["Referer"] = "https://new.kenyalaw.org/search/"
+
+    if _HAS_CURL_CFFI:
+        try:
+            r = curl_requests.get(
+                url, impersonate="chrome", timeout=timeout,
+                allow_redirects=True, headers=headers,
+            )
+            if r.status_code < 400:
+                final = safe_url(str(r.url))
+                if final:
+                    return (final, r.text)
+            elif r.status_code == 403:
+                log.info("curl_cffi 403 on %s; trying plain requests", url)
+        except Exception as exc:
+            log.debug("curl_cffi failed %s: %s", url, exc)
+
+    try:
+        r = session().get(url, timeout=timeout, allow_redirects=True, headers=headers)
+        final = safe_url(r.url)
+        if not final:
+            return None
+        r.raise_for_status()
+        ct = r.headers.get("Content-Type", "").lower()
+        if "html" not in ct and "text/" not in ct:
+            return None
+        return (final, r.text)
+    except requests.HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 403:
+            log.info("403 on %s — CDN blocked both curl_cffi and requests", url)
+        else:
+            log.info("fetch failed %s: %s", url, exc)
+        return None
+    except Exception as exc:
+        log.info("fetch failed %s: %s", url, exc)
+        return None
 
 
 # ============================================================
@@ -708,7 +1003,6 @@ def init_db():
                 relevance REAL NOT NULL DEFAULT 0
             )
         """)
-        # Add aliases column to existing DBs
         try:
             cols = {r[1] for r in con.execute("PRAGMA table_info(documents)").fetchall()}
             if "aliases" not in cols:
@@ -846,6 +1140,17 @@ def get_year(text):
 
 
 def _html_to_structured_text(node) -> str:
+    for sel in (
+        ".share-buttons", ".sharing", ".social-share", ".social-links",
+        "[class*='share-button']", "[class*='social-share']",
+        "[class*='share-doc']", ".document-share", ".btn-share",
+    ):
+        try:
+            for el in node.select(sel):
+                el.decompose()
+        except Exception:
+            pass
+
     for br in node.find_all("br"):
         br.replace_with("\n")
     for tag in node.find_all(
@@ -970,6 +1275,44 @@ def _extract_from_akn_html(html: str) -> str:
     return best
 
 
+def _extract_body_from_html(url: str, html: str, kind: str) -> str:
+    """General-purpose full-page HTML body extraction (for fetch_html fallback)."""
+    soup = BeautifulSoup(html, "html.parser")
+    _strip_chrome(soup)
+
+    for node in soup(["script", "style", "nav", "footer", "header",
+                      "noscript", "svg", "form"]):
+        node.decompose()
+
+    candidates: list[str] = []
+    for sel in _AKN_CONTENT_SELECTORS:
+        try:
+            for node in soup.select(sel):
+                text = _filter_noise_lines(_html_to_structured_text(node))
+                if text:
+                    candidates.append(text)
+        except Exception:
+            pass
+    for sel in ("article", "main", "#content", ".content"):
+        try:
+            node = soup.select_one(sel)
+            if node:
+                text = _filter_noise_lines(_html_to_structured_text(node))
+                if text:
+                    candidates.append(text)
+        except Exception:
+            pass
+    if soup.body:
+        text = _filter_noise_lines(_html_to_structured_text(soup.body))
+        if text:
+            candidates.append(text)
+
+    if not candidates:
+        return ""
+    body = max(candidates, key=len)[:500_000]
+    return _strip_body_noise(body, kind, url)
+
+
 def extract_from_akn(akn: dict | None) -> str:
     if not akn:
         return ""
@@ -996,8 +1339,6 @@ _META_LINE_RE = re.compile(
 
 
 def _find_act_start(lines: list[str]) -> int:
-    """Locate the first line of real act content, skipping cover + TOC pages."""
-    # Find "AN ACT of Parliament" — reliable preamble anchor
     preamble_idx = None
     for i, line in enumerate(lines[:600]):
         if re.match(r"^An?\s+ACT\s+of\s+Parliament\b", line.strip(), re.I):
@@ -1016,7 +1357,6 @@ def _find_act_start(lines: list[str]) -> int:
                 return j
         return preamble_idx
 
-    # No preamble — look for Part or first numbered section
     for i, line in enumerate(lines[:600]):
         s = line.strip()
         if re.match(r"^Part\s+[IVXLCDM]+\s*[-–—:]", s, re.I):
@@ -1028,11 +1368,6 @@ def _find_act_start(lines: list[str]) -> int:
 
 
 def parse_act_header(content: str) -> dict:
-    """
-    Split raw act text into:
-      title, act_number, metadata[], preamble, remaining_lines
-    Skips anything before the act heading (cover, TOC, licence pages).
-    """
     lines = content.split("\n")
     start = _find_act_start(lines)
     lines = lines[start:]
@@ -1051,7 +1386,6 @@ def parse_act_header(content: str) -> dict:
             i += 1
             continue
 
-        # "GAMBLING CONTROL ACT NO.14 OF 2025"
         m = _ACT_HEADING_RE.match(stripped)
         if m and stripped == stripped.upper() and len(stripped) < 250:
             title = clean(m.group(1))
@@ -1059,14 +1393,12 @@ def parse_act_header(content: str) -> dict:
             i += 1
             continue
 
-        # Standalone all-caps title
         if (not title and stripped == stripped.upper() and len(stripped) < 200
                 and any(w in stripped for w in ("ACT", "CODE", "CONSTITUTION", "BILL"))):
             title = stripped
             i += 1
             continue
 
-        # Standalone number line
         if (not act_number
                 and re.match(r"^(?:NO\.?\s*\d+\s+OF\s+\d{4}|CAP\.?\s*\d+[A-Z]?)$",
                              stripped, re.I)):
@@ -1074,7 +1406,6 @@ def parse_act_header(content: str) -> dict:
             i += 1
             continue
 
-        # Metadata
         mm = _META_LINE_RE.match(stripped)
         if mm:
             label = clean(mm.group(1))
@@ -1083,7 +1414,6 @@ def parse_act_header(content: str) -> dict:
             i += 1
             continue
 
-        # Preamble "AN ACT of Parliament..."
         if re.match(r"^An?\s+ACT\s+of\s+Parliament\b", stripped, re.I):
             preamble_parts = [stripped]
             j = i + 1
@@ -1101,7 +1431,6 @@ def parse_act_header(content: str) -> dict:
             body_start = j
             break
 
-        # First Part or numbered section — no preamble
         if re.match(r"^(?:Part\s+[IVXLCDM]|\d{1,3}[A-Z]?\.\s+[A-Z])", stripped, re.I):
             body_start = i
             break
@@ -1588,7 +1917,6 @@ def _looks_like_toc_line(text: str) -> bool:
 
 
 def _parse_body_items(body: str) -> list[dict]:
-    """Parse a statute body (already header-stripped) into parts + sections."""
     body = re.sub(r"[ \t]+", " ", body or "")
     body = re.sub(r"\n{3,}", "\n\n", body)
     blocks = [b.strip() for b in re.split(r"\n{2,}", body) if b.strip()]
@@ -1685,7 +2013,6 @@ def build_statute_view(doc: dict) -> dict:
     if looks_like_chrome(raw_body):
         raw_body = ""
 
-    # Aliases from DB
     aliases_list = []
     try:
         aliases_list = json.loads(doc.get("aliases") or "[]")
@@ -1897,13 +2224,29 @@ def fetch_act(url: str, title: str, cap: str = "", year: str = "",
                 and looks_like_act_text(existing["body"])):
             return True
 
+    # 1) AKN JSON
     akn = KL.fetch_akn(url)
     body = extract_from_akn(akn)
 
+    # 2) PDF
     if not body or not looks_like_act_text(body):
         pdf_text = KL.fetch_pdf_text(url)
-        if pdf_text and looks_like_act_text(pdf_text) and len(pdf_text) > len(body):
+        if pdf_text and looks_like_act_text(pdf_text) and len(pdf_text) > len(body or ""):
             body = pdf_text
+
+    # 3) curl_cffi HTML
+    if not body or not looks_like_act_text(body):
+        got = fetch_html(url)
+        if got:
+            final_url, html = got
+            html_body = _extract_body_from_html(final_url, html, "statute")
+            if html_body and looks_like_act_text(html_body) and len(html_body) > len(body or ""):
+                body = html_body
+                if not title:
+                    soup = BeautifulSoup(html, "html.parser")
+                    t = _extract_page_title(soup, final_url)
+                    if t:
+                        title = t
 
     if not body or not looks_like_act_text(body):
         log.info("Act %r: no valid content from %s", title, url)
@@ -1941,13 +2284,29 @@ def fetch_case(url: str, title: str = "", citation: str = "",
     if existing and existing.get("body") and len(existing["body"]) > 500:
         return True
 
+    # 1) AKN JSON
     akn = KL.fetch_akn(url)
     body = extract_from_akn(akn)
 
+    # 2) PDF
     if not body or len(body) < 1000:
         pdf_text = KL.fetch_pdf_text(url)
-        if pdf_text and len(pdf_text) > len(body):
+        if pdf_text and len(pdf_text) > len(body or ""):
             body = pdf_text
+
+    # 3) curl_cffi HTML
+    if not body or len(body) < 1000:
+        got = fetch_html(url)
+        if got:
+            final_url, html = got
+            html_body = _extract_body_from_html(final_url, html, "case")
+            if html_body and len(html_body) > len(body or ""):
+                body = html_body
+                if not title:
+                    soup = BeautifulSoup(html, "html.parser")
+                    t = _extract_page_title(soup, final_url)
+                    if t:
+                        title = t
 
     if not body or len(body) < 200:
         log.info("Case %r: no content from %s", title, url)
@@ -1956,7 +2315,7 @@ def fetch_case(url: str, title: str = "", citation: str = "",
     if not citation:
         citation = citation_from(body[:5000])
     if not year:
-        year = get_year(title or body[:2000])
+        year = extract_year_from_url(url) or get_year(title or body[:2000])
 
     save_document({
         "url": url, "kind": "case",
@@ -1983,27 +2342,408 @@ def fetch_document(url, kind_hint="case"):
 
 
 # ============================================================
-# SEARCH HELPER — local + Kenya Law
+# DDGS-BASED DISCOVERY ENGINE
 # ============================================================
 
 
-def search_kenyalaw(query: str, kind: str, limit: int = 10) -> list[dict]:
-    if not query or not check_online():
+def search_web(query: str, max_results: int = 12) -> list[dict]:
+    """Run a single DDGS query. Returns [{url, title, snippet}]."""
+    global _last_search_error
+
+    if not _HAS_DDGS:
+        log.warning("search_web: ddgs not installed — cannot run %r", query)
+        with _last_search_error_lock:
+            _last_search_error = "ddgs not installed — run: pip install ddgs"
         return []
-    fetched = []
-    if kind == "statute":
-        for r in KL.search(query, kind="act", max_results=limit * 2)[:limit]:
-            if fetch_act(r["url"], r["title"]):
-                d = get_document(r["url"])
-                if d:
-                    fetched.append(d)
-    elif kind == "case":
-        for r in KL.search(query, kind="judgment", max_results=limit * 2)[:limit]:
-            if fetch_case(r["url"], title=r["title"]):
-                d = get_document(r["url"])
-                if d:
-                    fetched.append(d)
-    return fetched
+
+    try:
+        with DDGS() as client:
+            raw = list(client.text(query, max_results=max_results))
+        with _last_search_error_lock:
+            _last_search_error = None
+        log.info("search_web OK: %r → %d hits (via %s)",
+                 query, len(raw), _DDGS_LIB)
+    except Exception as exc:
+        log.warning("search_web FAILED: %r — %s (via %s)",
+                    query, exc, _DDGS_LIB)
+        with _last_search_error_lock:
+            _last_search_error = str(exc)
+        return []
+
+    out = []
+    for r in raw:
+        url = safe_url(r.get("href", ""))
+        if not url:
+            continue
+        out.append({
+            "url": url,
+            "title": _clean_serp_title(r.get("title", "")),
+            "snippet": clean(r.get("body", "")),
+        })
+    return out
+
+
+def cached_web_search(query: str, bypass: bool = False) -> list[dict]:
+    if bypass:
+        return search_web(query, 12)
+    key = clean(query).lower()
+    with db() as con:
+        row = con.execute(
+            "SELECT results,created_at FROM search_cache WHERE query=?", (key,)
+        ).fetchone()
+    if row and time.time() - row["created_at"] < SEARCH_CACHE_SECONDS:
+        try:
+            return json.loads(row["results"])
+        except Exception:
+            pass
+    results = search_web(query, 12)
+    with db() as con:
+        con.execute("""
+            INSERT INTO search_cache(query,results,created_at) VALUES(?,?,?)
+            ON CONFLICT(query) DO UPDATE SET
+                results=excluded.results, created_at=excluded.created_at
+        """, (key, json.dumps(results), time.time()))
+    return results
+
+
+def query_variants(query: str, kind: str) -> list[str]:
+    q = clean(query)
+    variants: list[str] = []
+
+    if kind in ("statute", "all"):
+        variants.extend([
+            f'site:new.kenyalaw.org/akn/ke/act "{q}"',
+            f'site:new.kenyalaw.org/akn/ke/act {q}',
+            f'site:kenyalaw.org/akn/ke/act "{q}"',
+            f'site:kenyalaw.org "Acts" "{q}"',
+            f'site:kenyalaw.org "{q}" Act Kenya',
+        ])
+        cap = _CAP_RE.search(q)
+        if cap:
+            variants.append(f'site:new.kenyalaw.org/akn/ke/act "Cap. {cap.group(1)}"')
+        act_no = _ACT_NO_RE.search(q)
+        if act_no:
+            variants.append(
+                f'site:new.kenyalaw.org/akn/ke/act "No. {act_no.group(1)} of {act_no.group(2)}"'
+            )
+
+    if kind in ("case", "all"):
+        variants.extend([
+            f'site:new.kenyalaw.org/akn/ke/judgment "{q}"',
+            f'site:kenyalaw.org/caselaw "{q}"',
+            f'site:kenyalaw.org "{q}" judgment Kenya',
+        ])
+        cite = citation_from(q)
+        if cite:
+            variants.append(f'site:kenyalaw.org/caselaw "{cite}"')
+
+    if kind == "constitution":
+        variants.extend([
+            f'site:kenyalaw.org "Constitution of Kenya" "{q}"',
+            f'site:kenyalaw.org "Constitution of Kenya 2010"',
+        ])
+
+    return list(dict.fromkeys(variants))[:8]
+
+
+def relevance_score(query: str, item: dict) -> float:
+    q_lower = (query or "").lower().strip()
+    if not q_lower:
+        return 0.0
+
+    url     = (item.get("url") or "").lower()
+    title   = (item.get("title") or "").lower()
+    snippet = (item.get("snippet") or item.get("body") or "").lower()
+
+    actual_kind = classify_url_kind(url)
+    expected_kind = item.get("_expected_kind")
+
+    if expected_kind in ("statute", "case") and actual_kind != expected_kind:
+        return -1000.0
+
+    is_rule_query = any(w in q_lower for w in _RULE_QUERY_WORDS)
+    is_ln_url = bool(_AKN_LN_RE.search(url) or _AKN_RULE_RE.search(url))
+    if ("act" in q_lower and not is_rule_query
+            and is_ln_url and expected_kind == "statute"):
+        return -1000.0
+
+    score = 0.0
+    q_toks = significant_tokens(q_lower)
+    t_toks = significant_tokens(title)
+
+    if q_lower in title:
+        score += 100.0
+
+    if q_toks:
+        overlap = len(q_toks & t_toks) / len(q_toks)
+        score += 60.0 * overlap
+        if overlap == 0.0:
+            if expected_kind == "statute" and actual_kind == "statute":
+                score -= 80.0
+
+    if "cap" in q_lower and "cap" in title:
+        score += 25.0
+    if "[" in q_lower and "[" in title:
+        score += 25.0
+    if _ACT_NO_RE.search(q_lower) and _ACT_NO_RE.search(title):
+        score += 25.0
+
+    if q_lower in snippet:
+        score += 20.0
+    elif q_toks:
+        s_toks = significant_tokens(snippet)
+        if s_toks:
+            score += 30.0 * (len(q_toks & s_toks) / len(q_toks))
+
+    if is_ln_url and not is_rule_query:
+        score -= 80.0
+
+    if "/akn/ke/" in url:
+        score += 10.0
+    if url.startswith("https://new.kenyalaw.org/akn/"):
+        score += 5.0
+
+    return round(score, 2)
+
+
+def discover_for_query(query: str, kind: str,
+                       bypass_cache: bool = False) -> list[dict]:
+    variants = query_variants(query, kind)
+    if not variants:
+        log.info("discover_for_query: no query variants for %r kind=%s", query, kind)
+        return []
+
+    log.info("discover_for_query START: query=%r kind=%s variants=%d",
+             query, kind, len(variants))
+
+    found: list[dict] = []
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futures = [pool.submit(cached_web_search, v, bypass_cache) for v in variants]
+        for f in as_completed(futures):
+            try:
+                found.extend(f.result())
+            except Exception as exc:
+                log.info("discover_for_query: variant failed — %s", exc)
+
+    log.info("discover_for_query: raw_hits=%d for %r (%s)",
+             len(found), query, kind)
+
+    by_url: dict[str, dict] = {}
+    for r in found:
+        url = safe_url(r.get("url", ""))
+        if not url:
+            continue
+        if url not in by_url or len(r.get("title", "")) > len(by_url[url].get("title", "")):
+            by_url[url] = r
+
+    out: list[dict] = []
+    for url, r in by_url.items():
+        actual = classify_url_kind(url)
+        if actual is None:
+            continue
+        if kind in ("statute", "case") and actual != kind:
+            continue
+        r["url"] = url
+        r["kind"] = kind if kind != "all" else actual
+        r["_actual_kind"] = actual
+        r["_expected_kind"] = kind if kind != "all" else actual
+        out.append(r)
+
+    return out
+
+
+def _score_candidates(items: list[dict], query: str, kind_hint: str,
+                      limit: int = 15) -> list[dict]:
+    min_score = SCORE_THRESHOLDS.get(kind_hint, 20.0)
+
+    def _score_all(candidates: list[dict], threshold: float) -> list[dict]:
+        kept = []
+        for it in candidates:
+            it["_expected_kind"] = kind_hint if kind_hint != "all" else it.get("_actual_kind")
+            s = relevance_score(query, it)
+            if s >= threshold:
+                it["_score"] = s
+                it["score"] = s
+                kept.append(it)
+        return kept
+
+    by_url: dict[str, dict] = {}
+    for it in items:
+        url = safe_url(it.get("url", ""))
+        if not url:
+            continue
+        it["url"] = url
+        if url not in by_url or it.get("_score", 0) > by_url[url].get("_score", 0):
+            by_url[url] = it
+    candidates = list(by_url.values())
+
+    kept = _score_all(candidates, min_score)
+    if not kept and min_score > 0:
+        log.info("_score_candidates: relaxing threshold %.0f → %.0f for %r",
+                 min_score, min_score / 2, query)
+        kept = _score_all(candidates, min_score / 2)
+
+    kept.sort(key=lambda x: x["_score"], reverse=True)
+    return kept[:limit]
+
+
+def search_kenyalaw(query: str, kind: str, limit: int = 15,
+                    total_timeout: float = 20.0) -> list[dict]:
+    """
+    Query Kenya Law live via DDGS discovery + parallel fetch.
+
+    NOTE: intentionally does NOT gate on check_online(). If DDGS is
+    available we run the query. The connectivity probe is only used
+    for the frontend's "offline" UI state.
+    """
+    if not query:
+        log.info("search_kenyalaw: empty query — skipping")
+        return []
+    if kind not in ("case", "statute"):
+        log.info("search_kenyalaw: kind=%s not searchable live", kind)
+        return []
+    if not _HAS_DDGS:
+        log.warning(
+            "search_kenyalaw: ddgs not installed — cannot search %r. "
+            "Run: pip install ddgs", query,
+        )
+        return []
+
+    log.info("search_kenyalaw START: query=%r kind=%s limit=%d",
+             query, kind, limit)
+    t0 = time.time()
+
+    found = discover_for_query(query, kind, bypass_cache=False)
+    if not found:
+        log.info("search_kenyalaw: no candidates for %r (%s)", query, kind)
+        return []
+
+    ranked = _score_candidates(found, query, kind, limit=limit)
+    if not ranked:
+        log.info(
+            "search_kenyalaw: all %d candidates below threshold for %r (%s)",
+            len(found), query, kind,
+        )
+        return []
+
+    log.info("search_kenyalaw: %d/%d candidates passed threshold",
+             len(ranked), len(found))
+
+    for it in ranked:
+        save_document({
+            "url": it["url"],
+            "kind": kind,
+            "title": it.get("title") or f"Untitled {kind}",
+            "body": "",
+            "relevance": it["_score"],
+        })
+
+    fetch_fn = fetch_act if kind == "statute" else fetch_case
+    futures = [
+        FETCH_POOL.submit(fetch_fn, it["url"], it.get("title", ""))
+        for it in ranked
+    ]
+    remaining = max(5.0, total_timeout - (time.time() - t0))
+    try:
+        for fut in as_completed(futures, timeout=remaining):
+            try:
+                fut.result(timeout=2)
+            except Exception as exc:
+                log.info("search_kenyalaw: fetch failed — %s", exc)
+    except Exception:
+        pass
+
+    urls = [it["url"] for it in ranked]
+    ph = ",".join("?" * len(urls))
+    with db() as con:
+        rows = con.execute(
+            f"SELECT * FROM documents WHERE url IN ({ph})", urls
+        ).fetchall()
+    by_url = {r["url"]: dict(r) for r in rows}
+
+    results: list[dict] = []
+    for it in ranked:
+        doc = by_url.get(it["url"])
+        if doc:
+            results.append(doc)
+        else:
+            results.append({
+                "url": it["url"], "kind": kind,
+                "title": it.get("title") or "",
+                "citation": "", "court": "", "year": "", "date": "",
+                "body": "", "source": "Kenya Law",
+            })
+
+    with_body = sum(1 for r in results if (r.get("body") or "").strip())
+    log.info("search_kenyalaw DONE: %r (%s) → %d candidates, %d with body, %.1fs",
+             query, kind, len(results), with_body, time.time() - t0)
+    return results
+
+
+# ============================================================
+# STRONG-MATCH + QUERY VARIANT HELPERS
+# ============================================================
+
+
+_CASE_NAME_RE = re.compile(r"(.+?)\s+(?:v|vs)\.?\s+(.+)", re.I)
+
+
+def _has_strong_local_match(query: str, results: list[dict]) -> bool:
+    """
+    Return True only when a cached result actually looks like the case/act
+    the user typed — not merely a document that shares one token.
+
+    Rules:
+      • Case-style query ("X v Y"):
+          – query is a literal substring of title/citation, OR
+          – parties appear in the correct order: X ... v ... Y
+        "Republic v Maina" is NOT a match for "Maina v Republic".
+      • Statute-style query:
+          – all query tokens present in the title/citation/aliases.
+    """
+    q = (query or "").lower().strip()
+    if not q or not results:
+        return False
+
+    q_norm = re.sub(r"\s+", " ", q)
+    q_tokens = set(re.findall(r"[a-z0-9]{2,}", q_norm))
+    if not q_tokens:
+        return False
+
+    case_style = bool(re.search(r"\b\w+\s+(?:v|vs)\b", q_norm))
+    party_match = _CASE_NAME_RE.match(q_norm) if case_style else None
+    p1_first = p2_first = ""
+    if party_match:
+        p1_tokens = re.findall(r"[a-z0-9]{2,}", party_match.group(1).lower())
+        p2_tokens = re.findall(r"[a-z0-9]{2,}", party_match.group(2).lower())
+        if p1_tokens:
+            p1_first = p1_tokens[0]
+        if p2_tokens:
+            p2_first = p2_tokens[0]
+
+    for r in results[:5]:
+        title = (r.get("title") or "").lower()
+        citation = (r.get("citation") or "").lower()
+        aliases = " ".join(str(a) for a in (r.get("aliases") or [])).lower()
+        combined = f"{title} {citation} {aliases}"
+
+        if q_norm in combined:
+            return True
+
+        if case_style and p1_first and p2_first:
+            order_re = (
+                rf"\b{re.escape(p1_first)}\b"
+                rf".{{0,200}}?\bv(?:s)?\b.{{0,200}}?\b{re.escape(p2_first)}\b"
+            )
+            if re.search(order_re, combined):
+                return True
+            continue
+
+        title_tokens = set(re.findall(r"[a-z0-9]{2,}", title))
+        if q_tokens.issubset(title_tokens):
+            return True
+
+    return False
 
 
 # ============================================================
@@ -2013,11 +2753,16 @@ def search_kenyalaw(query: str, kind: str, limit: int = 10) -> list[dict]:
 
 def public_document(item):
     body = item.get("body", "") or ""
+    excerpt_body = _SHARE_NOISE_RE.sub("", body)
+    excerpt_body = _DOWNLOAD_NOISE_RE.sub("", excerpt_body)
+    excerpt_body = re.sub(r"\n{3,}", "\n\n", excerpt_body).strip()
+
     aliases = []
     try:
         aliases = json.loads(item.get("aliases") or "[]")
     except Exception:
         pass
+
     return {
         "id": item.get("id"),
         "url": item.get("url", ""),
@@ -2029,7 +2774,7 @@ def public_document(item):
         "year": item.get("year", ""),
         "date": item.get("date", ""),
         "aliases": aliases,
-        "excerpt": clean(body)[:650],
+        "excerpt": clean(excerpt_body)[:650],
         "has_body": bool(body.strip()),
         "source": item.get("source", "Library"),
     }
@@ -2104,6 +2849,15 @@ def bootstrap_acts_from_list():
                     hits = KL.search(title, kind="act", max_results=3)
                     if hits:
                         url = hits[0]["url"]
+                except Exception:
+                    pass
+            if not url:
+                # DDGS fallback
+                try:
+                    found = discover_for_query(title, "statute", bypass_cache=True)
+                    ranked = _score_candidates(found, title, "statute", limit=1)
+                    if ranked:
+                        url = ranked[0]["url"]
                 except Exception:
                     pass
             if not url:
@@ -2215,6 +2969,9 @@ def health():
         "constitution_articles_loaded": len(load_constitution_articles()),
         "bootstrap_running": bootstrap_state["running"],
         "pymupdf": _HAS_FITZ,
+        "ddgs": _HAS_DDGS,
+        "ddgs_lib": _DDGS_LIB,
+        "curl_cffi": _HAS_CURL_CFFI,
     })
 
 
@@ -2255,16 +3012,22 @@ def api_search():
     if len(query) < 2:
         return jsonify({"error": "Enter at least two characters."}), 400
 
+    log.info("api_search: query=%r kind=%s (ddgs=%s curl_cffi=%s)",
+             query, kind, _HAS_DDGS, _HAS_CURL_CFFI)
+
+    # ── 1) Local (cached) search ───────────────────────────
     local_results: list[dict] = []
     if kind == "all":
         for k, idx in (("constitution", CONSTITUTION_INDEX),
-                       ("statute", STATUTE_INDEX), ("case", CASE_INDEX)):
+                       ("statute", STATUTE_INDEX),
+                       ("case", CASE_INDEX)):
             for h in idx.search(query, limit=MAX_RESULTS):
                 local_results.append({**h, "kind": k})
     else:
         idx = _index_for_kind(kind)
         if idx:
-            local_results = [{**h, "kind": kind} for h in idx.search(query, limit=MAX_RESULTS)]
+            local_results = [{**h, "kind": kind}
+                             for h in idx.search(query, limit=MAX_RESULTS)]
 
     def hydrate(rows):
         urls = [r["url"] for r in rows if r.get("url")]
@@ -2301,22 +3064,43 @@ def api_search():
     else:
         hydrated = [d for d in hydrated if d.get("body")]
 
-    # Online fallback for cases AND statutes
-    if kind in ("case", "statute") and len(hydrated) < 5 and check_online():
+    # ── 2) Decide whether to reach out to EKLR ─────────────
+    need_live = False
+    if kind in ("case", "statute"):
+        if not hydrated:
+            need_live = True
+        elif len(hydrated) < 3:
+            need_live = True
+        elif not _has_strong_local_match(query, hydrated):
+            need_live = True
+
+    live_docs: list[dict] = []
+    if need_live:
+        log.info(
+            "api_search: triggering live search — query=%r kind=%s "
+            "local=%d online=%s ddgs=%s",
+            query, kind, len(hydrated), check_online(), _HAS_DDGS,
+        )
         try:
-            live = search_kenyalaw(query, kind, limit=10)
-            seen = {d["url"] for d in hydrated}
-            for doc in live:
-                if doc["url"] not in seen:
-                    hydrated.append(doc)
-                    seen.add(doc["url"])
+            live_docs = search_kenyalaw(query, kind, limit=15)
+            log.info("api_search: live_docs=%d", len(live_docs))
         except Exception:
             log.exception("live search failed")
 
+    # ── 3) Merge live results ahead of weak local ones ─────
+    if live_docs:
+        live_urls = {d.get("url") for d in live_docs if d.get("url")}
+        hydrated = [d for d in hydrated if d.get("url") not in live_urls]
+        fetched_live = [d for d in live_docs if d.get("body")]
+        thin_live = [d for d in live_docs if not d.get("body")]
+        hydrated = fetched_live + thin_live + hydrated
+
     if kind == "all":
         order = {"constitution": 0, "statute": 1, "case": 2}
-        hydrated.sort(key=lambda d: (order.get(d.get("kind", "case"), 3),
-                                     -float(d.get("score", 0) or 0)))
+        hydrated.sort(key=lambda d: (
+            order.get(d.get("kind", "case"), 3),
+            -float(d.get("score", 0) or 0),
+        ))
 
     return jsonify({
         "query": query,
@@ -2452,7 +3236,11 @@ def api_statute_structured():
         return jsonify(cached)
     doc = get_document(url)
     if not doc or not doc.get("body"):
-        return jsonify({"error": "Not cached"}), 404
+        # Try fetch on demand (thin stubs will hydrate on first click)
+        fetch_act(url, doc.get("title", "") if doc else "")
+        doc = get_document(url)
+    if not doc:
+        return jsonify({"error": "Could not fetch document"}), 502
     if looks_like_chrome(doc["body"]):
         return jsonify({"error": "Chrome detected — will be refetched"}), 409
     data = build_statute_view(doc)
@@ -2540,4 +3328,19 @@ start_bootstrap()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
+    log.info("LawDesk listening on :%d (ddgs=%s, curl_cffi=%s, pymupdf=%s)",
+             port, _HAS_DDGS, _HAS_CURL_CFFI, _HAS_FITZ)
+    if not _HAS_DDGS:
+        log.error(
+            "\n" + "=" * 68 + "\n"
+            "  WARNING: ddgs is NOT installed.\n"
+            "  Live EKLR search will NOT work — only cached results return.\n"
+            "  Install it now:   pip install ddgs\n"
+            + "=" * 68
+        )
+    if not _HAS_CURL_CFFI:
+        log.warning(
+            "  curl_cffi not installed — CDN-protected pages may 403.\n"
+            "  Install with:  pip install curl_cffi"
+        )
     app.run(host="0.0.0.0", port=port, debug=False)
