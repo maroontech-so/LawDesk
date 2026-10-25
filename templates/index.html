@@ -2,228 +2,470 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1, viewport-fit=cover"
+        />
         <meta name="theme-color" content="#fafafa" />
         <title>Library</title>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+        />
         <style>
-            * { box-sizing: border-box; margin: 0; padding: 0; }
-            html { -webkit-text-size-adjust: 100%; }
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+            html {
+                -webkit-text-size-adjust: 100%;
+            }
             body {
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
                     "Helvetica Neue", Arial, sans-serif;
-                background: #fafafa; color: #1a1a1a; min-height: 100vh;
-                -webkit-tap-highlight-color: transparent; line-height: 1.5; font-size: 15px;
+                background: #fafafa;
+                color: #1a1a1a;
+                min-height: 100vh;
+                -webkit-tap-highlight-color: transparent;
+                line-height: 1.5;
+                font-size: 15px;
             }
-            button, input { font: inherit; }
-            button { cursor: pointer; border: none; background: none; color: inherit; }
-            a { color: inherit; text-decoration: none; }
+            button,
+            input {
+                font: inherit;
+            }
+            button {
+                cursor: pointer;
+                border: none;
+                background: none;
+                color: inherit;
+            }
+            a {
+                color: inherit;
+                text-decoration: none;
+            }
 
-            .app { width: 100%; max-width: 900px; margin: 0 auto; padding: 16px 16px 40px; }
-            .title { font-size: 20px; font-weight: 600; margin-bottom: 14px; letter-spacing: -0.01em; }
+            .app {
+                width: 100%;
+                max-width: 900px;
+                margin: 0 auto;
+                padding: 16px 16px 40px;
+            }
+            .title {
+                font-size: 20px;
+                font-weight: 600;
+                margin-bottom: 14px;
+                letter-spacing: -0.01em;
+            }
 
-            .search-wrap { position: relative; margin-bottom: 16px; }
+            .search-wrap {
+                position: relative;
+                margin-bottom: 16px;
+            }
             .search-input {
-                width: 100%; padding: 12px 90px 12px 38px;
-                background: #fff; border: 1px solid #e5e5e5; border-radius: 10px;
-                font-size: 15px; outline: none;
+                width: 100%;
+                padding: 12px 90px 12px 38px;
+                background: #fff;
+                border: 1px solid #e5e5e5;
+                border-radius: 10px;
+                font-size: 15px;
+                outline: none;
             }
-            .search-input:focus { border-color: #999; }
+            .search-input:focus {
+                border-color: #999;
+            }
             .search-icon {
-                position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-                width: 18px; height: 18px; color: #999; pointer-events: none;
+                position: absolute;
+                left: 12px;
+                top: 50%;
+                transform: translateY(-50%);
+                width: 18px;
+                height: 18px;
+                color: #999;
+                pointer-events: none;
             }
             .search-btn {
-                position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
-                padding: 8px 16px; background: #111; color: #fff; border-radius: 8px;
-                font-size: 13px; font-weight: 600;
+                position: absolute;
+                right: 6px;
+                top: 50%;
+                transform: translateY(-50%);
+                padding: 8px 16px;
+                background: #111;
+                color: #fff;
+                border-radius: 8px;
+                font-size: 13px;
+                font-weight: 600;
             }
-            .search-btn:hover { background: #333; }
+            .search-btn:hover {
+                background: #333;
+            }
+            .search-btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
 
             .suggestions {
-                position: absolute; top: 100%; left: 0; right: 0;
-                background: #fff; border: 1px solid #e5e5e5; border-top: none;
-                border-radius: 0 0 10px 10px; max-height: 320px; overflow-y: auto;
-                z-index: 30; display: none; box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: #fff;
+                border: 1px solid #e5e5e5;
+                border-top: none;
+                border-radius: 0 0 10px 10px;
+                max-height: 320px;
+                overflow-y: auto;
+                z-index: 30;
+                display: none;
+                box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
             }
-            .suggestions.open { display: block; }
+            .suggestions.open {
+                display: block;
+            }
             .suggestion {
-                padding: 10px 14px; cursor: pointer; font-size: 14px;
+                padding: 10px 14px;
+                cursor: pointer;
+                font-size: 14px;
                 border-bottom: 1px solid #f4f4f4;
             }
-            .suggestion:last-child { border-bottom: none; }
-            .suggestion:hover, .suggestion.active { background: #f6f6f6; }
+            .suggestion:last-child {
+                border-bottom: none;
+            }
+            .suggestion:hover,
+            .suggestion.active {
+                background: #f6f6f6;
+            }
 
             .tabs {
-                display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
-                margin-bottom: 14px; padding-bottom: 2px;
+                display: flex;
+                gap: 6px;
+                overflow-x: auto;
+                scrollbar-width: none;
+                margin-bottom: 14px;
+                padding-bottom: 2px;
             }
-            .tabs::-webkit-scrollbar { display: none; }
+            .tabs::-webkit-scrollbar {
+                display: none;
+            }
             .tab {
-                flex: 0 0 auto; padding: 6px 12px; font-size: 13px;
-                border-radius: 999px; color: #555; background: #fff;
-                border: 1px solid #e5e5e5; white-space: nowrap;
+                flex: 0 0 auto;
+                padding: 6px 12px;
+                font-size: 13px;
+                border-radius: 999px;
+                color: #555;
+                background: #fff;
+                border: 1px solid #e5e5e5;
+                white-space: nowrap;
             }
-            .tab.active { background: #111; color: #fff; border-color: #111; }
+            .tab.active {
+                background: #111;
+                color: #fff;
+                border-color: #111;
+            }
 
             .section-head {
-                display: flex; align-items: baseline; justify-content: space-between;
-                margin: 10px 0 8px; font-size: 12px; text-transform: uppercase;
-                letter-spacing: 0.06em; color: #888;
+                display: flex;
+                align-items: baseline;
+                justify-content: space-between;
+                margin: 10px 0 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+                color: #888;
             }
-            .section-head .count { font-size: 11px; color: #aaa; }
+            .section-head .count {
+                font-size: 11px;
+                color: #aaa;
+            }
 
             .alpha-head {
-                font-size: 11px; font-weight: 700; letter-spacing: 0.14em;
-                text-transform: uppercase; color: #111;
+                font-size: 11px;
+                font-weight: 700;
+                letter-spacing: 0.14em;
+                text-transform: uppercase;
+                color: #111;
                 padding: 10px 4px 6px;
                 margin: 10px 0 4px;
                 border-bottom: 1px solid #e5e5e5;
             }
             .act-row {
-                display: flex; justify-content: space-between;
-                align-items: baseline; gap: 12px;
-                padding: 10px 12px; background: #fff;
-                border-radius: 8px; border: 1px solid #f0f0f0;
+                display: flex;
+                justify-content: space-between;
+                align-items: baseline;
+                gap: 12px;
+                padding: 10px 12px;
+                background: #fff;
+                border-radius: 8px;
+                border: 1px solid #f0f0f0;
                 margin-bottom: 4px;
-                transition: background 0.12s, border-color 0.12s;
+                transition:
+                    background 0.12s,
+                    border-color 0.12s;
                 font-size: 14px;
             }
-            .act-row:hover { background: #fafafa; border-color: #e0e0e0; }
-            .act-title { flex: 1; color: #111; font-weight: 500; }
-            .act-cap { font-size: 11px; color: #888; flex-shrink: 0; }
-
-            .results { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
-            .result {
-                display: block; background: #fff; border: 1px solid #ececec;
-                border-radius: 10px; padding: 12px 14px;
-                transition: border-color 0.15s, background 0.15s;
+            .act-row:hover {
+                background: #fafafa;
+                border-color: #e0e0e0;
             }
-            .result:hover { border-color: #d0d0d0; background: #fcfcfc; }
+            .act-title {
+                flex: 1;
+                color: #111;
+                font-weight: 500;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .act-cap {
+                font-size: 11px;
+                color: #888;
+                flex-shrink: 0;
+            }
+            .cached-dot {
+                display: inline-block;
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+                background: #1a7f4b;
+                flex-shrink: 0;
+            }
+
+            .results {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                margin-bottom: 24px;
+            }
+            .result {
+                display: block;
+                background: #fff;
+                border: 1px solid #ececec;
+                border-radius: 10px;
+                padding: 12px 14px;
+                transition:
+                    border-color 0.15s,
+                    background 0.15s;
+            }
+            .result:hover {
+                border-color: #d0d0d0;
+                background: #fcfcfc;
+            }
             .result-title {
-                font-size: 15px; font-weight: 600; color: #111; margin-bottom: 4px;
+                font-size: 15px;
+                font-weight: 600;
+                color: #111;
+                margin-bottom: 4px;
                 line-height: 1.35;
             }
             .result-meta {
-                font-size: 12px; color: #888;
-                display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 4px;
+                font-size: 12px;
+                color: #888;
+                display: flex;
+                gap: 10px;
+                flex-wrap: wrap;
+                margin-bottom: 4px;
             }
-            .result-meta .citation { color: #444; font-weight: 500; }
+            .result-meta .citation {
+                color: #444;
+                font-weight: 500;
+            }
             .result-excerpt {
-                font-size: 13px; color: #666; line-height: 1.5;
-                display: -webkit-box; -webkit-line-clamp: 2;
-                -webkit-box-orient: vertical; overflow: hidden;
+                font-size: 13px;
+                color: #666;
+                line-height: 1.5;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+            }
+            .badge {
+                display: inline-block;
+                font-size: 10px;
+                padding: 1px 6px;
+                border-radius: 4px;
+                background: #f0f0f0;
+                color: #666;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
+                margin-right: 4px;
+            }
+            .badge.live {
+                background: #fff4e6;
+                color: #b56718;
+            }
+            .badge.pdf {
+                background: #eef0ff;
+                color: #3b4ea8;
             }
 
-            .toc { display: flex; flex-direction: column; gap: 8px; }
+            .toc {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
             .toc-chapter {
-                background: #fff; border: 1px solid #ececec;
-                border-radius: 10px; overflow: hidden;
+                background: #fff;
+                border: 1px solid #ececec;
+                border-radius: 10px;
+                overflow: hidden;
             }
             .toc-chapter-head {
                 padding: 12px 14px;
-                display: flex; align-items: center; gap: 10px;
-                cursor: pointer; transition: background 0.12s;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                cursor: pointer;
+                transition: background 0.12s;
             }
-            .toc-chapter-head:hover { background: #fafafa; }
+            .toc-chapter-head:hover {
+                background: #fafafa;
+            }
             .toc-ch-num {
-                font-size: 11px; font-weight: 600; text-transform: uppercase;
-                letter-spacing: 0.05em; color: #666;
+                font-size: 11px;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                color: #666;
             }
-            .toc-ch-title { font-size: 15px; font-weight: 600; color: #111; }
+            .toc-ch-title {
+                font-size: 15px;
+                font-weight: 600;
+                color: #111;
+            }
             .toc-chapter-body {
-                display: none; padding: 4px 14px 12px;
+                display: none;
+                padding: 4px 14px 12px;
                 border-top: 1px solid #f0f0f0;
             }
-            .toc-chapter.open .toc-chapter-body { display: block; }
-            .toc-chapter.open .toc-chapter-head .fa-chevron-right { transform: rotate(90deg); }
-            .toc-part { padding: 8px 0 4px; }
+            .toc-chapter.open .toc-chapter-body {
+                display: block;
+            }
+            .toc-chapter.open .toc-chapter-head .fa-chevron-right {
+                transform: rotate(90deg);
+            }
+            .toc-part {
+                padding: 8px 0 4px;
+            }
             .toc-part-title {
-                font-size: 12px; font-weight: 600; color: #555;
-                text-transform: uppercase; letter-spacing: 0.04em;
+                font-size: 12px;
+                font-weight: 600;
+                color: #555;
+                text-transform: uppercase;
+                letter-spacing: 0.04em;
                 margin-bottom: 6px;
             }
-            .toc-articles { display: flex; flex-direction: column; }
-            .toc-article {
-                display: flex; gap: 10px; padding: 7px 4px; font-size: 14px;
-                color: #333; transition: background 0.12s; border-radius: 4px;
+            .toc-articles {
+                display: flex;
+                flex-direction: column;
             }
-            .toc-article:hover { background: #f6f6f6; }
+            .toc-article {
+                display: flex;
+                gap: 10px;
+                padding: 7px 4px;
+                font-size: 14px;
+                color: #333;
+                transition: background 0.12s;
+                border-radius: 4px;
+            }
+            .toc-article:hover {
+                background: #f6f6f6;
+            }
             .toc-art-num {
-                color: #888; font-weight: 600; min-width: 32px;
+                color: #888;
+                font-weight: 600;
+                min-width: 32px;
                 font-variant-numeric: tabular-nums;
             }
-            .toc-art-title { flex: 1; }
+            .toc-art-title {
+                flex: 1;
+            }
 
-            .empty, .loading {
-                text-align: center; padding: 40px 20px; color: #888; font-size: 14px;
+            .empty,
+            .loading {
+                text-align: center;
+                padding: 40px 20px;
+                color: #888;
+                font-size: 14px;
             }
             .spinner {
-                display: inline-block; width: 16px; height: 16px;
-                border: 2px solid #e0e0e0; border-top-color: #666;
-                border-radius: 50%; animation: spin 0.7s linear infinite;
-                vertical-align: middle; margin-right: 6px;
-            }
-            @keyframes spin { to { transform: rotate(360deg); } }
-
-            .acts-loading {
-                text-align: center; padding: 70px 20px; color: #666;
-            }
-            .acts-loading .spinner {
-                display: block; margin: 0 auto 20px;
-                width: 28px; height: 28px;
-                border: 3px solid #e0e0e0; border-top-color: #444;
+                display: inline-block;
+                width: 16px;
+                height: 16px;
+                border: 2px solid #e0e0e0;
+                border-top-color: #666;
                 border-radius: 50%;
-                animation: spin 0.9s linear infinite;
+                animation: spin 0.7s linear infinite;
+                vertical-align: middle;
+                margin-right: 6px;
             }
-            .acts-loading h3 {
-                font-size: 15px; font-weight: 600; color: #333;
-                margin-bottom: 6px;
-            }
-            .acts-loading p { font-size: 13px; color: #888; }
-
-            .acts-progress {
-                background: #eff6ff; color: #1e40af;
-                border: 1px solid #dbeafe; border-radius: 8px;
-                padding: 8px 12px; margin: 10px 0;
-                font-size: 12px;
-                display: flex; align-items: center; gap: 8px;
-            }
-            .acts-progress .spinner {
-                width: 12px; height: 12px; margin: 0;
-                border: 2px solid #bfdbfe; border-top-color: #1e40af;
+            @keyframes spin {
+                to {
+                    transform: rotate(360deg);
+                }
             }
 
             .offline-panel {
-                text-align: center; padding: 70px 20px;
+                text-align: center;
+                padding: 70px 20px;
             }
             .offline-panel .offline-icon {
-                font-size: 72px; color: #cbd5e1;
-                opacity: 0.35; margin-bottom: 22px; display: block;
+                font-size: 72px;
+                color: #cbd5e1;
+                opacity: 0.35;
+                margin-bottom: 22px;
+                display: block;
             }
             .offline-panel h3 {
-                font-size: 16px; font-weight: 600; color: #333;
+                font-size: 16px;
+                font-weight: 600;
+                color: #333;
                 margin-bottom: 6px;
             }
             .offline-panel p {
-                font-size: 13px; color: #888;
-                max-width: 340px; margin: 0 auto 22px;
+                font-size: 13px;
+                color: #888;
+                max-width: 340px;
+                margin: 0 auto 22px;
                 line-height: 1.6;
             }
             .offline-panel .reconnect-btn {
-                padding: 10px 24px; background: #111; color: #fff;
-                border-radius: 8px; font-size: 13px; font-weight: 600;
+                padding: 10px 24px;
+                background: #111;
+                color: #fff;
+                border-radius: 8px;
+                font-size: 13px;
+                font-weight: 600;
             }
-            .offline-panel .reconnect-btn:hover { background: #333; }
+            .offline-panel .reconnect-btn:hover {
+                background: #333;
+            }
 
             @media (max-width: 480px) {
-                .app { padding: 12px 12px 32px; }
-                .title { font-size: 18px; margin-bottom: 12px; }
-                .search-input { padding: 11px 80px 11px 36px; font-size: 16px; }
-                .search-btn { padding: 7px 12px; font-size: 12px; }
-                .result-title { font-size: 14px; }
-                .result-excerpt { font-size: 12px; }
-                .offline-panel .offline-icon { font-size: 56px; }
+                .app {
+                    padding: 12px 12px 32px;
+                }
+                .title {
+                    font-size: 18px;
+                    margin-bottom: 12px;
+                }
+                .search-input {
+                    padding: 11px 80px 11px 36px;
+                    font-size: 16px;
+                }
+                .search-btn {
+                    padding: 7px 12px;
+                    font-size: 12px;
+                }
+                .result-title {
+                    font-size: 14px;
+                }
+                .result-excerpt {
+                    font-size: 12px;
+                }
+                .offline-panel .offline-icon {
+                    font-size: 56px;
+                }
             }
         </style>
     </head>
@@ -232,19 +474,35 @@
             <h1 class="title">Library</h1>
 
             <div class="search-wrap">
-                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <svg
+                    class="search-icon"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                >
                     <circle cx="11" cy="11" r="7"></circle>
                     <path d="m20 20-3.5-3.5"></path>
                 </svg>
-                <input id="searchInput" class="search-input" type="search"
-                       placeholder="Search cases, acts, citations…"
-                       autocomplete="off" spellcheck="false" />
-                <button id="searchBtn" class="search-btn" type="button">Search</button>
+                <input
+                    id="searchInput"
+                    class="search-input"
+                    type="search"
+                    placeholder="Search cases, acts, citations…"
+                    autocomplete="off"
+                    spellcheck="false"
+                />
+                <button id="searchBtn" class="search-btn" type="button">
+                    Search
+                </button>
                 <div class="suggestions" id="suggestions"></div>
             </div>
 
             <div class="tabs" id="tabs">
-                <button class="tab" data-kind="constitution">Constitution</button>
+                <button class="tab active" data-kind="constitution">
+                    Constitution
+                </button>
                 <button class="tab" data-kind="case">Cases</button>
                 <button class="tab" data-kind="statute">Acts</button>
             </div>
@@ -255,6 +513,13 @@
         <script>
             (() => {
                 "use strict";
+
+                const isLocal =
+                    ["localhost", "127.0.0.1", ""].includes(
+                        location.hostname,
+                    ) || location.protocol === "file:";
+                const API = isLocal ? "" : "https://lawdesk.onrender.com";
+
                 const $ = (id) => document.getElementById(id);
                 const input = $("searchInput");
                 const searchBtn = $("searchBtn");
@@ -265,6 +530,7 @@
                 const KEY_TAB = "library:last_tab";
                 const KEY_QUERY = "library:last_query";
                 const VALID_TABS = ["constitution", "case", "statute"];
+
                 function getLastTab() {
                     try {
                         const v = localStorage.getItem(KEY_TAB);
@@ -273,10 +539,16 @@
                     return "constitution";
                 }
                 function saveLastTab(k) {
-                    try { localStorage.setItem(KEY_TAB, k); } catch (_) {}
+                    try {
+                        localStorage.setItem(KEY_TAB, k);
+                    } catch (_) {}
                 }
                 function getLastQuery() {
-                    try { return localStorage.getItem(KEY_QUERY) || ""; } catch (_) { return ""; }
+                    try {
+                        return localStorage.getItem(KEY_QUERY) || "";
+                    } catch (_) {
+                        return "";
+                    }
                 }
                 function saveLastQuery(q) {
                     try {
@@ -291,56 +563,83 @@
                 let activeSuggestion = -1;
                 let suggestions = [];
                 let allExpanded = true;
-                let onlineState = true;
-                let actsPollTimer = null;
-                let lastActsHash = "";
 
-                const KIND_LABEL = { case: "Case", statute: "Act", constitution: "Constitution" };
+                const KIND_LABEL = {
+                    case: "Case",
+                    statute: "Act",
+                    constitution: "Constitution",
+                };
 
                 input.value = query;
                 tabsEl.querySelectorAll(".tab").forEach((t) => {
                     t.classList.toggle("active", t.dataset.kind === kind);
                 });
 
-                function esc(s) {
-                    return String(s ?? "").replace(/[&<>"']/g, (c) => ({
-                        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-                    })[c]);
-                }
-                function excerpt(s, max = 180) {
-                    const t = String(s || "").replace(/\s+/g, " ").trim();
+                const esc = (s) =>
+                    String(s ?? "").replace(
+                        /[&<>"']/g,
+                        (c) =>
+                            ({
+                                "&": "&amp;",
+                                "<": "&lt;",
+                                ">": "&gt;",
+                                '"': "&quot;",
+                                "'": "&#39;",
+                            })[c],
+                    );
+
+                const excerpt = (s, max = 180) => {
+                    const t = String(s || "")
+                        .replace(/\s+/g, " ")
+                        .trim();
                     return t.length > max ? t.slice(0, max).trimEnd() + "…" : t;
-                }
-                function buildReadUrl(doc) {
+                };
+
+                const buildReadUrl = (doc) => {
                     const p = new URLSearchParams();
-                    if (doc.kind === "constitution") p.set("mode", "constitution");
+                    if (doc.kind === "constitution")
+                        p.set("mode", "constitution");
                     else if (doc.kind === "case") p.set("mode", "case");
                     else if (doc.kind === "statute") p.set("mode", "statute");
                     if (doc.url) p.set("sourceUrl", doc.url);
                     if (doc.title) p.set("title", doc.title);
                     return "/read.html?" + p.toString();
-                }
+                };
 
                 function renderCard(doc) {
                     const meta = [];
-                    if (doc.citation) meta.push(`<span class="citation">${esc(doc.citation)}</span>`);
+                    if (doc.citation)
+                        meta.push(
+                            `<span class="citation">${esc(doc.citation)}</span>`,
+                        );
                     if (doc.court) meta.push(esc(doc.court));
                     if (doc.year) meta.push(esc(doc.year));
+                    let badge = "";
+                    if (doc.pdf_only)
+                        badge = `<span class="badge pdf">PDF</span>`;
+                    else if (!doc.has_body)
+                        badge = `<span class="badge live"></span>`;
                     return `<a class="result" href="${esc(buildReadUrl(doc))}">
-                        <div class="result-title">${esc(doc.title)}</div>
-                        <div class="result-meta">${meta.join(" · ")}</div>
-                        <div class="result-excerpt">${esc(excerpt(doc.excerpt || ""))}</div>
-                    </a>`;
+    <div class="result-title">${esc(doc.title)}</div>
+    <div class="result-meta">${badge}${meta.join(" · ")}</div>
+    <div class="result-excerpt">${esc(excerpt(doc.excerpt || ""))}</div>
+  </a>`;
                 }
 
-                function renderActsAtoZ(docs, progress) {
+                function renderActsAtoZ(docs) {
                     if (!docs.length) {
-                        renderActsLoading(progress);
+                        bodyEl.innerHTML = `<div class="empty">
+      <div style="font-weight:600;color:#333;margin-bottom:6px;">No acts available</div>
+      <div>acts.json could not be loaded.</div>
+    </div>`;
                         return;
                     }
                     const groups = {};
                     for (const d of docs) {
-                        const first = (d.title || "?").trim().charAt(0).toUpperCase();
+                        const first = (d.title || "?")
+                            .trim()
+                            .charAt(0)
+                            .toUpperCase();
                         const key = /[A-Z]/.test(first) ? first : "#";
                         (groups[key] = groups[key] || []).push(d);
                     }
@@ -350,83 +649,68 @@
                         return a < b ? -1 : 1;
                     });
                     let html = `<div class="section-head">
-                        <span>Acts &amp; Statutes</span>
-                        <span class="count">${docs.length}</span>
-                    </div>`;
-                    if (progress && progress.running) {
-                        html += `<div class="acts-progress">
-                            <span class="spinner"></span>
-                            <span>Loading more acts — ${progress.completed || 0} of ${progress.total || '?'}</span>
-                        </div>`;
-                    }
+    <span>Acts &amp; Statutes</span>
+    <span class="count">${docs.length}</span>
+  </div>`;
                     for (const letter of letters) {
                         html += `<div class="alpha-head">${letter}</div>`;
                         const rows = groups[letter].sort((a, b) =>
-                            (a.title || "").localeCompare(b.title || "")
+                            (a.title || "").localeCompare(b.title || ""),
                         );
                         for (const d of rows) {
                             html += `<a class="act-row" href="${esc(buildReadUrl(d))}">
-                                <span class="act-title">${esc(d.title)}</span>
-                                ${d.citation ? `<span class="act-cap">${esc(d.citation)}</span>` : ""}
-                            </a>`;
+        <span class="act-title">
+          ${d.has_body ? '<span class="cached-dot"></span>' : ""}
+          ${esc(d.title)}
+        </span>
+        ${d.citation ? `<span class="act-cap">${esc(d.citation)}</span>` : ""}
+      </a>`;
                         }
                     }
                     bodyEl.innerHTML = html;
                 }
 
-                function renderActsLoading(progress) {
-                    bodyEl.innerHTML = `<div class="acts-loading">
-                        <div class="spinner"></div>
-                        <h3>Loading acts library</h3>
-                        <p>${progress && progress.total
-                            ? `${progress.completed || 0} of ${progress.total} acts fetched from Kenya Law.`
-                            : "Fetching every act from Kenya Law. Acts will appear here as they're ready."}</p>
-                    </div>`;
-                }
-
                 function renderList(docs, heading, count) {
                     if (!docs.length) {
                         bodyEl.innerHTML = `<div class="empty">
-                            <div style="font-weight:600;color:#333;margin-bottom:6px;">No ${esc(heading)}</div>
-                            <div>Try a different search.</div>
-                        </div>`;
+      <div style="font-weight:600;color:#333;margin-bottom:6px;">No ${esc(heading)}</div>
+      <div>Search above to fetch from Kenya Law.</div>
+    </div>`;
                         return;
                     }
                     bodyEl.innerHTML = `
-                        <div class="section-head"><span>${esc(heading)}</span><span class="count">${count}</span></div>
-                        <div class="results">${docs.map(renderCard).join("")}</div>`;
+    <div class="section-head"><span>${esc(heading)}</span>
+    <span class="count">${count}</span></div>
+    <div class="results">${docs.map(renderCard).join("")}</div>`;
                 }
 
                 function renderSearchResults(items, resp) {
                     if (!items.length) {
                         if (resp && resp.online_available === false) {
                             renderOfflinePanel(resp.query || query);
-                        } else if (kind === "statute") {
-                            bodyEl.innerHTML = `<div class="empty">
-                                <div style="font-weight:600;color:#333;margin-bottom:6px;">Act not cached yet</div>
-                                <div>The acts library is still loading in the background. Try again shortly.</div>
-                            </div>`;
                         } else {
                             bodyEl.innerHTML = `<div class="empty">
-                                <div style="font-weight:600;color:#333;margin-bottom:6px;">No results</div>
-                                <div>Try a different search.</div>
-                            </div>`;
+        <div style="font-weight:600;color:#333;margin-bottom:6px;">No results</div>
+        <div>Kenya Law was searched but nothing matched. Try a citation, a party name, or a different spelling.</div>
+      </div>`;
                         }
                         return;
                     }
-                    const label = KIND_LABEL[kind] + (items.length === 1 ? "" : "s");
+                    const label =
+                        KIND_LABEL[kind] + (items.length === 1 ? "" : "s");
                     bodyEl.innerHTML = `
-                        <div class="section-head"><span>${esc(label)}</span><span class="count">${items.length}</span></div>
-                        <div class="results">${items.map(renderCard).join("")}</div>`;
+    <div class="section-head"><span>${esc(label)}</span>
+    <span class="count">${items.length}</span></div>
+    <div class="results">${items.map(renderCard).join("")}</div>`;
                 }
 
                 function renderOfflinePanel(q) {
                     bodyEl.innerHTML = `<div class="offline-panel">
-                        <i class="fa-solid fa-wifi offline-icon"></i>
-                        <h3>No internet</h3>
-                        <p>Couldn't reach Kenya Law. Check your connection and try again.</p>
-                        <button class="reconnect-btn" onclick="retrySearch()">Reconnect</button>
-                    </div>`;
+    <i class="fa-solid fa-wifi offline-icon"></i>
+    <h3>Couldn't reach Kenya Law</h3>
+    <p>The search request failed. EKLR may be down or blocking this network.</p>
+    <button class="reconnect-btn" onclick="retrySearch()">Retry</button>
+  </div>`;
                 }
 
                 async function retrySearch() {
@@ -436,20 +720,8 @@
                         else loadLibrary();
                         return;
                     }
-                    bodyEl.innerHTML = `<div class="loading"><span class="spinner"></span>Reconnecting…</div>`;
-                    try {
-                        const res = await fetch("/api/health?_=" + Date.now());
-                        const data = await res.json();
-                        onlineState = data.online !== false;
-                        if (!onlineState) {
-                            renderOfflinePanel(q);
-                            return;
-                        }
-                        await runSearch(q);
-                    } catch (_) {
-                        onlineState = false;
-                        renderOfflinePanel(q);
-                    }
+                    bodyEl.innerHTML = `<div class="loading"><span class="spinner"></span>Retrying…</div>`;
+                    await runSearch(q);
                 }
                 window.retrySearch = retrySearch;
 
@@ -462,25 +734,25 @@
                     }
                     saveLastQuery(q);
                     suggestionsEl.classList.remove("open");
-                    bodyEl.innerHTML = `<div class="loading"><span class="spinner"></span>Searching…</div>`;
+                    bodyEl.innerHTML = `<div class="loading"><span class="spinner"></span>Searching Kenya Law…</div>`;
                     searchBtn.disabled = true;
                     try {
                         if (kind === "constitution") {
-                            const res = await fetch(`/api/constitution/search?q=${encodeURIComponent(q)}`);
+                            const res = await fetch(
+                                `${API}/api/constitution/search?q=${encodeURIComponent(q)}`,
+                            );
                             const data = await res.json();
                             renderConstitutionSearch(data.results || [], q);
                             return;
                         }
-                        const res = await fetch("/api/search", {
+                        const res = await fetch(`${API}/api/search`, {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ query: q, kind: kind }),
                         });
                         const data = await res.json();
-                        onlineState = data.online_available !== false;
                         renderSearchResults(data.results || [], data);
                     } catch (err) {
-                        onlineState = false;
                         renderOfflinePanel(q);
                     } finally {
                         searchBtn.disabled = false;
@@ -490,108 +762,102 @@
                 function renderConstitutionSearch(results, q) {
                     if (!results.length) {
                         bodyEl.innerHTML = `<div class="empty">
-                            <div style="font-weight:600;color:#333;margin-bottom:6px;">No matching articles</div>
-                            <div>Try a different phrase.</div>
-                        </div>`;
+      <div style="font-weight:600;color:#333;margin-bottom:6px;">No matching articles</div>
+      <div>Try a different phrase.</div>
+    </div>`;
                         return;
                     }
-                    const html = results.map((r) => `
-                        <a class="result" href="/read.html?mode=constitution&article=${r.number}">
-                            <div class="result-title">Article ${r.number}. ${esc(r.title)}</div>
-                            <div class="result-meta">
-                                ${r.chapter ? esc(`Chapter ${r.chapter[0]}: ${r.chapter[1]}`) : ""}
-                                ${r.part ? " · " + esc(`Part ${r.part[0]}: ${r.part[1]}`) : ""}
-                            </div>
-                        </a>`).join("");
+                    const html = results
+                        .map(
+                            (r) => `
+    <a class="result" href="/read.html?mode=constitution&article=${r.number}">
+      <div class="result-title">Article ${r.number}. ${esc(r.title)}</div>
+      <div class="result-meta">
+        ${r.chapter ? esc(`Chapter ${r.chapter[0]}: ${r.chapter[1]}`) : ""}
+        ${r.part ? " · " + esc(`Part ${r.part[0]}: ${r.part[1]}`) : ""}
+      </div>
+    </a>`,
+                        )
+                        .join("");
                     bodyEl.innerHTML = `
-                        <div class="section-head"><span>Constitution · articles matching “${esc(q)}”</span>
-                        <span class="count">${results.length}</span></div>
-                        <div class="results">${html}</div>`;
+    <div class="section-head"><span>Constitution · articles matching “${esc(q)}”</span>
+    <span class="count">${results.length}</span></div>
+    <div class="results">${html}</div>`;
                 }
 
-                async function loadLibrary(force = false, silent = false) {
+                async function loadLibrary() {
                     if (kind === "constitution") return loadConstitutionTOC();
-                    if (!silent) {
-                        bodyEl.innerHTML = `<div class="loading"><span class="spinner"></span>Loading…</div>`;
-                    }
+                    bodyEl.innerHTML = `<div class="loading"><span class="spinner"></span>Loading…</div>`;
                     try {
-                        const url = `/api/library?type=${encodeURIComponent(kind)}&limit=500`;
+                        const url = `${API}/api/library?type=${encodeURIComponent(kind)}&limit=500`;
                         const res = await fetch(url);
                         const data = await res.json();
-                        onlineState = data.online !== false;
                         const docs = data.documents || [];
-
                         if (kind === "statute") {
-                            const hash = docs.map(d => d.url).sort().join("|") + `|${data.total}`;
-                            const progress = {
-                                running: data.bootstrap_running && data.bootstrap_kind === "acts",
-                                completed: data.bootstrap_completed || 0,
-                                total: data.bootstrap_total || 0,
-                            };
-                            if (!silent || hash !== lastActsHash) {
-                                lastActsHash = hash;
-                                renderActsAtoZ(docs, progress);
-                            }
-                            if (actsPollTimer) clearTimeout(actsPollTimer);
-                            if (progress.running) {
-                                actsPollTimer = setTimeout(() => loadLibrary(true, true), 4000);
-                            }
+                            renderActsAtoZ(docs);
                         } else {
-                            const label = KIND_LABEL[kind] + (docs.length === 1 ? "" : "s");
+                            const label =
+                                KIND_LABEL[kind] +
+                                (docs.length === 1 ? "" : "s");
                             renderList(docs, label, docs.length);
                         }
                     } catch (err) {
-                        onlineState = false;
-                        if (!silent) {
-                            bodyEl.innerHTML = `<div class="empty">Could not load: ${esc(err.message)}</div>`;
-                        }
+                        bodyEl.innerHTML = `<div class="empty">Could not load: ${esc(err.message)}</div>`;
                     }
                 }
 
                 async function loadConstitutionTOC() {
                     bodyEl.innerHTML = `<div class="loading"><span class="spinner"></span>Loading Constitution…</div>`;
                     try {
-                        const res = await fetch("/api/constitution/toc");
+                        const res = await fetch(`${API}/api/constitution/toc`);
                         const data = await res.json();
                         const chapters = data.chapters || [];
                         if (!chapters.length) {
                             bodyEl.innerHTML = `<div class="empty">
-                                <div style="font-weight:600;color:#333;margin-bottom:6px;">Constitution not loaded</div>
-                                <div>Place <code>constitution.json</code> in <code>data/</code> and restart.</div>
-                            </div>`;
+        <div style="font-weight:600;color:#333;margin-bottom:6px;">Constitution not loaded</div>
+        <div>Place <code>constitution.json</code> in <code>data/</code> and restart.</div>
+      </div>`;
                             return;
                         }
                         let html = `<div class="section-head">
-                            <span>Constitution of Kenya 2010</span>
-                            <span style="display:flex;gap:8px;align-items:center;">
-                                <span class="count">${chapters.length} chapters</span>
-                                <button onclick="toggleAllChapters()" id="toggleAllBtn"
-                                        style="font-size:11px;padding:3px 8px;border:1px solid #ddd;border-radius:999px;color:#444;background:#fff;">Collapse all</button>
-                            </span>
-                        </div><div class="toc">`;
+      <span>Constitution of Kenya 2010</span>
+      <span style="display:flex;gap:8px;align-items:center;">
+        <span class="count">${chapters.length} chapters</span>
+        <button onclick="toggleAllChapters()" id="toggleAllBtn"
+          style="font-size:11px;padding:3px 8px;border:1px solid #ddd;
+                 border-radius:999px;color:#444;background:#fff;">Collapse all</button>
+      </span>
+    </div><div class="toc">`;
                         for (const ch of chapters) {
-                            const artCount = (ch.articles ? ch.articles.length : 0) +
-                                (ch.parts ? ch.parts.reduce((s, p) => s + p.articles.length, 0) : 0);
+                            const artCount =
+                                (ch.articles ? ch.articles.length : 0) +
+                                (ch.parts
+                                    ? ch.parts.reduce(
+                                          (s, p) => s + p.articles.length,
+                                          0,
+                                      )
+                                    : 0);
                             html += `<div class="toc-chapter open" data-ch="${ch.number}">
-                                <div class="toc-chapter-head" onclick="this.parentElement.classList.toggle('open')">
-                                    <div style="flex:1;min-width:0;">
-                                        <div class="toc-ch-num">Chapter ${ch.number}</div>
-                                        <div class="toc-ch-title">${esc(ch.title)}</div>
-                                    </div>
-                                    <span style="font-size:11px;color:#999;flex-shrink:0;">${artCount} arts</span>
-                                    <i class="fa-solid fa-chevron-right" style="margin-left:6px;font-size:10px;color:#999;transition:transform .2s;"></i>
-                                </div>
-                                <div class="toc-chapter-body">`;
+        <div class="toc-chapter-head" onclick="this.parentElement.classList.toggle('open')">
+          <div style="flex:1;min-width:0;">
+            <div class="toc-ch-num">Chapter ${ch.number}</div>
+            <div class="toc-ch-title">${esc(ch.title)}</div>
+          </div>
+          <span style="font-size:11px;color:#999;flex-shrink:0;">${artCount} arts</span>
+          <i class="fa-solid fa-chevron-right" style="margin-left:6px;
+             font-size:10px;color:#999;transition:transform .2s;"></i>
+        </div>
+        <div class="toc-chapter-body">`;
                             if (ch.parts && ch.parts.length) {
                                 for (const part of ch.parts) {
                                     html += `<div class="toc-part">
-                                        <div class="toc-part-title">Part ${part.number}: ${esc(part.title)}</div>
-                                        <div class="toc-articles">`;
+            <div class="toc-part-title">Part ${part.number}: ${esc(part.title)}</div>
+            <div class="toc-articles">`;
                                     for (const art of part.articles) {
                                         html += `<a class="toc-article" href="/read.html?mode=constitution&article=${art.number}">
-                                            <span class="toc-art-num">${art.number}.</span>
-                                            <span class="toc-art-title">${esc(art.title)}</span>
-                                        </a>`;
+              <span class="toc-art-num">${art.number}.</span>
+              <span class="toc-art-title">${esc(art.title)}</span>
+            </a>`;
                                     }
                                     html += `</div></div>`;
                                 }
@@ -600,9 +866,9 @@
                                 html += `<div class="toc-articles">`;
                                 for (const art of ch.articles) {
                                     html += `<a class="toc-article" href="/read.html?mode=constitution&article=${art.number}">
-                                        <span class="toc-art-num">${art.number}.</span>
-                                        <span class="toc-art-title">${esc(art.title)}</span>
-                                    </a>`;
+            <span class="toc-art-num">${art.number}.</span>
+            <span class="toc-art-title">${esc(art.title)}</span>
+          </a>`;
                                 }
                                 html += `</div>`;
                             }
@@ -615,14 +881,16 @@
                         bodyEl.innerHTML = `<div class="empty">Could not load: ${esc(err.message)}</div>`;
                     }
                 }
-
-                window.toggleAllChapters = function() {
+                window.toggleAllChapters = function () {
                     allExpanded = !allExpanded;
                     document.querySelectorAll(".toc-chapter").forEach((ch) => {
                         ch.classList.toggle("open", allExpanded);
                     });
                     const btn = document.getElementById("toggleAllBtn");
-                    if (btn) btn.textContent = allExpanded ? "Collapse all" : "Expand all";
+                    if (btn)
+                        btn.textContent = allExpanded
+                            ? "Collapse all"
+                            : "Expand all";
                 };
 
                 async function fetchSuggestions(q) {
@@ -632,7 +900,9 @@
                         return;
                     }
                     try {
-                        const res = await fetch(`/api/autocomplete?q=${encodeURIComponent(q)}&kind=${kind}`);
+                        const res = await fetch(
+                            `${API}/api/autocomplete?q=${encodeURIComponent(q)}&kind=${kind}`,
+                        );
                         const data = await res.json();
                         suggestions = data.suggestions || [];
                         activeSuggestion = -1;
@@ -640,13 +910,27 @@
                             suggestionsEl.classList.remove("open");
                             return;
                         }
-                        suggestionsEl.innerHTML = suggestions.map((s, i) =>
-                            `<div class="suggestion${i === activeSuggestion ? " active" : ""}" data-idx="${i}">${esc(s)}</div>`
-                        ).join("");
+                        suggestionsEl.innerHTML = suggestions
+                            .map(
+                                (s, i) =>
+                                    `<div class="suggestion${i === activeSuggestion ? " active" : ""}" data-idx="${i}">${esc(s)}</div>`,
+                            )
+                            .join("");
                         suggestionsEl.classList.add("open");
                     } catch (_) {
                         suggestionsEl.classList.remove("open");
                     }
+                }
+
+                function updateActive() {
+                    suggestionsEl
+                        .querySelectorAll(".suggestion")
+                        .forEach((el, i) => {
+                            el.classList.toggle(
+                                "active",
+                                i === activeSuggestion,
+                            );
+                        });
                 }
 
                 input.addEventListener("input", () => {
@@ -655,10 +939,14 @@
                     acTimer = setTimeout(() => fetchSuggestions(query), 80);
                 });
                 input.addEventListener("focus", () => {
-                    if (input.value.trim().length >= 2) fetchSuggestions(input.value.trim());
+                    if (input.value.trim().length >= 2)
+                        fetchSuggestions(input.value.trim());
                 });
                 input.addEventListener("keydown", (e) => {
-                    if (!suggestionsEl.classList.contains("open") || !suggestions.length) {
+                    if (
+                        !suggestionsEl.classList.contains("open") ||
+                        !suggestions.length
+                    ) {
                         if (e.key === "Enter") {
                             suggestionsEl.classList.remove("open");
                             runSearch(input.value.trim());
@@ -667,15 +955,19 @@
                     }
                     if (e.key === "ArrowDown") {
                         e.preventDefault();
-                        activeSuggestion = (activeSuggestion + 1) % suggestions.length;
+                        activeSuggestion =
+                            (activeSuggestion + 1) % suggestions.length;
                         updateActive();
                     } else if (e.key === "ArrowUp") {
                         e.preventDefault();
-                        activeSuggestion = (activeSuggestion - 1 + suggestions.length) % suggestions.length;
+                        activeSuggestion =
+                            (activeSuggestion - 1 + suggestions.length) %
+                            suggestions.length;
                         updateActive();
                     } else if (e.key === "Enter") {
                         e.preventDefault();
-                        if (activeSuggestion >= 0) input.value = suggestions[activeSuggestion];
+                        if (activeSuggestion >= 0)
+                            input.value = suggestions[activeSuggestion];
                         suggestionsEl.classList.remove("open");
                         runSearch(input.value.trim());
                     } else if (e.key === "Escape") {
@@ -686,11 +978,6 @@
                     suggestionsEl.classList.remove("open");
                     runSearch(input.value.trim());
                 });
-                function updateActive() {
-                    suggestionsEl.querySelectorAll(".suggestion").forEach((el, i) => {
-                        el.classList.toggle("active", i === activeSuggestion);
-                    });
-                }
                 suggestionsEl.addEventListener("click", (e) => {
                     const el = e.target.closest(".suggestion");
                     if (!el) return;
@@ -700,13 +987,16 @@
                     runSearch(query);
                 });
                 document.addEventListener("click", (e) => {
-                    if (!e.target.closest(".search-wrap")) suggestionsEl.classList.remove("open");
+                    if (!e.target.closest(".search-wrap"))
+                        suggestionsEl.classList.remove("open");
                 });
 
                 tabsEl.addEventListener("click", (e) => {
                     const t = e.target.closest(".tab");
                     if (!t) return;
-                    tabsEl.querySelectorAll(".tab").forEach((x) => x.classList.remove("active"));
+                    tabsEl
+                        .querySelectorAll(".tab")
+                        .forEach((x) => x.classList.remove("active"));
                     t.classList.add("active");
                     kind = t.dataset.kind;
                     saveLastTab(kind);
