@@ -63,7 +63,7 @@ USER_AGENT = (
     "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36 LawDesk/1.0"
 )
 HTTP_TIMEOUT = (5, 25)
-SCHEMA_VERSIONS = {"case": 7, "statute": 16}
+SCHEMA_VERSIONS = {"case": 7, "statute": 17}
 
 MIN_INTERVAL = 1.2
 _rate_lock = threading.Lock()
@@ -454,19 +454,16 @@ def search_live(query: str, kind: str, limit: int = 15):
         if html_err:
             last_error = html_err
         docs = html_docs
-
     if kind == "case":
         docs = [d for d in docs if is_case_url(d["url"])]
     elif kind == "statute":
         docs = [d for d in docs if is_act_url(d["url"])]
-
     if not docs:
         if last_error:
             log.info("EKLR search %r failed: %s", query, last_error)
         else:
             log.info("EKLR search %r: no hits", query)
         return [], last_error
-
     original_tokens = set(re.findall(r"[a-z0-9]+", query.lower()))
     if original_tokens:
 
@@ -481,14 +478,12 @@ def search_live(query: str, kind: str, limit: int = 15):
             return sum(1 for t in original_tokens if t in text)
 
         docs.sort(key=score, reverse=True)
-
     for d in docs:
-        d["kind"] = kind
         try:
             save_document(
                 {
                     "url": d["url"],
-                    "kind": kind,
+                    "kind": kind_for_url(d["url"], kind),
                     "title": d["title"],
                     "citation": d.get("citation", ""),
                     "court": d.get("court", ""),
@@ -946,12 +941,23 @@ def constitution_toc() -> list:
         if not ch or len(ch) < 2:
             continue
         node = chapters.setdefault(
-            ch[0], {"number": ch[0], "title": ch[1], "parts": {}, "articles": []}
+            ch[0],
+            {
+                "number": ch[0],
+                "title": ch[1],
+                "parts": {},
+                "articles": [],
+            },
         )
         part = art.get("part")
         if part and len(part) >= 2:
             p = node["parts"].setdefault(
-                part[0], {"number": part[0], "title": part[1], "articles": []}
+                part[0],
+                {
+                    "number": part[0],
+                    "title": part[1],
+                    "articles": [],
+                },
             )
             p["articles"].append({"number": art["number"], "title": art["title"]})
         else:
@@ -1206,7 +1212,10 @@ _PURE_ROLE_RE = re.compile(
     re.I,
 )
 _NUMBERED_PARA_RE = re.compile(r"^\s*\[?(\d{1,4})\]?\s*[\.\)]\s+")
-_SUBITEM_RE = re.compile(r"^\s*(\((?:\d{1,2}|[a-z]{1,3})\)|[a-z]{1,3}[\.\)])\s+", re.I)
+_SUBITEM_RE = re.compile(
+    r"^\s*(\((?:\d{1,2}|[a-z]{1,3})\)|[a-z]{1,3}[\.\)])\s+",
+    re.I,
+)
 _TRAILING_DOTS_RE = re.compile(r"[\s\.\u2026]+$")
 _MATTER_OF_RE = re.compile(r"^IN\s+THE\s+MATTER\s+OF\b", re.I)
 _QUOTE_INTRO_RE = re.compile(r'[-:]\s*["\u201c\u201d\u2018\u2019]\s*$')
@@ -1426,7 +1435,9 @@ def _intro_ending(text: str) -> bool:
     t = (text or "").rstrip()
     return t.endswith(":") or bool(
         re.search(
-            r"\b(as follows|namely|the following|hereunder|thus)\s*[:.]?\s*$", t, re.I
+            r"\b(as follows|namely|the following|hereunder|thus)\s*[:.]?\s*$",
+            t,
+            re.I,
         )
     )
 
@@ -1547,7 +1558,8 @@ _APPEARANCE_ROLE_RE = re.compile(
     re.I,
 )
 _SIGN_NOISE_RE = re.compile(
-    r"\s*(?:Related documents|RELATED DOCUMENTS|To the top|TO THE TOP|▲)\s*$", re.I
+    r"\s*(?:Related documents|RELATED DOCUMENTS|To the top|TO THE TOP|▲)\s*$",
+    re.I,
 )
 
 
@@ -1685,10 +1697,10 @@ def build_case_view(doc: dict) -> dict:
 
 
 _PART_RE = re.compile(
-    r"^(?:Part|PART)\s+([IVXLCDM]+[A-Z]?)\s*[—\-–:.\s]+\s*(.*)$", re.I
+    r"^(?:Part|PART)\s+([IVXLCDM]+[A-Z]?)\s*[—\-–:.\s]+\s*(.*)$",
+    re.I,
 )
 _SECTION_RE = re.compile(r"^(\d{1,3}[A-Z]?)\.\s+(.*)$", re.S)
-_HEAD_TRAILING_DIGIT_MARKER_RE = re.compile(r"\s+(\(\d{1,3}\))\s*$")
 _META_LINE_RE = re.compile(
     r"^(Published\s+in(?:\s+the)?\s+Kenya\s+Gazette|"
     r"Assented\s+to|Commenced|In\s+force|Revised\s+by)"
@@ -1696,59 +1708,30 @@ _META_LINE_RE = re.compile(
     re.I,
 )
 _ACT_HEADING_RE = re.compile(
-    r"^(.+?)\s+(?:NO\.?\s*\d+\s+OF\s+\d{4}|CAP\.?\s*\d+[A-Z]?)$", re.I
+    r"^(.+?)\s+(?:NO\.?\s*\d+\s+OF\s+\d{4}|CAP\.?\s*\d+[A-Z]?)$",
+    re.I,
 )
 _PURE_MARKER_RE = re.compile(r"^\s*\((?:\d{1,3}|[a-z]{1,3})\)\s*\.?\s*$", re.I)
 _STARTS_MARKER_RE = re.compile(r"^\s*\((?:\d{1,3}|[a-z]{1,3})\)", re.I)
 _CONJUNCTION_RE = re.compile(r"^\s*(?:and|or|&|but|nor)\s*$", re.I)
 _NUM_START = re.compile(r"^\d{1,3}[A-Z]?\.\s", re.I)
 
+# BROADENED: matches markers preceded by ANY punctuation, followed by ANY
+# whitespace (including inline text).  This catches both:
+#   "...limited to— (a)\n\ninformation..."    (trailing marker)
+#   "...individual; (e) a person's opinion..."  (inline marker)
+_MARKER_PUNCT_RE = re.compile(
+    r"([.;:,—–\-])\s*(\(\d{1,3}\)|\([a-z]\)|\([ivxlc]{2,}\))\s*",
+    re.MULTILINE,
+)
+
 
 def _normalize_markers(text: str) -> str:
     if not text:
         return text
-
-    # 1. Split on markers preceded by punctuation
-    text = re.sub(
-        r"([.;:—–,\-])\s*(\(\d{1,3}\)|\([a-z]\)|\([ivxlc]{2,}\))",
-        r"\1\n\n\2",
-        text,
-    )
-    # 2. Split on markers preceded by 'and' or 'or'
-    text = re.sub(
-        r"\b(and|or)\s+(\(\d{1,3}\)|\([a-z]\)|\([ivxlc]{2,}\))",
-        r"\1\n\n\2",
-        text,
-    )
-
-    # 3. Split on markers preceded by a space, but avoid splitting inline references
-    def split_marker(m):
-        start = m.start()
-        prefix = text[max(0, start - 15) : start].lower()
-        if any(
-            prefix.rstrip().endswith(w)
-            for w in [
-                "section",
-                "subsection",
-                "paragraph",
-                "article",
-                "act",
-                "schedule",
-                "cap",
-                "cap.",
-                "no.",
-                "rule",
-                "regulation",
-                "order",
-            ]
-        ):
-            return m.group(0)
-        return "\n\n" + m.group(1)
-
-    text = re.sub(
-        r"(?<=\s)(\(\d{1,3}\)|\([a-z]\)|\([ivxlc]{2,}\))(?=\s)", split_marker, text
-    )
-    return text
+    # Normalise Windows CRLF first so downstream splits work
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    return _MARKER_PUNCT_RE.sub(r"\1\n\n\2 ", text)
 
 
 def _find_act_start(lines: list[str]) -> int:
@@ -1834,7 +1817,7 @@ def parse_act_header(content: str) -> dict:
                     j += 1
                     continue
                 if re.match(
-                    r"^(?:Part\s+[IVXLCDM]|\d{1,3}[A-Z]?\.(?:\s|$))", nxt, re.I
+                    r"^(?:Part\s+[IVXLCDM]|\d{1,3}[A-Z]?\.\s+[A-Z])", nxt, re.I
                 ):
                     break
                 parts.append(nxt)
@@ -1842,7 +1825,7 @@ def parse_act_header(content: str) -> dict:
             preamble = _clean(" ".join(parts))
             body_start = j
             break
-        if re.match(r"^(?:Part\s+[IVXLCDM]|\d{1,3}[A-Z]?\.(?:\s|$))", stripped, re.I):
+        if re.match(r"^(?:Part\s+[IVXLCDM]|\d{1,3}[A-Z]?\.\s+[A-Z])", stripped, re.I):
             body_start = i
             break
         i += 1
@@ -1891,6 +1874,12 @@ def _merge_statute_blocks(blocks: list[str]) -> list[str]:
             merged.append(f"{b} — {blocks[i + 1]}")
             i += 2
             continue
+        if re.match(r"^\(\d{1,3}\)$|^\([a-z]\)$|^\([ivxlc]{2,}\)$", b) and i + 1 < len(
+            blocks
+        ):
+            merged.append(f"{b} {blocks[i + 1]}")
+            i += 2
+            continue
         merged.append(b)
         i += 1
     return merged
@@ -1925,25 +1914,11 @@ def _merge_short_blocks(blocks: list[str], min_len: int = 50) -> list[str]:
             and not _ends_complete(merged[-1])
             and len(stripped) < 30
             and not starts_numbered
-            and not starts_marker
         ):
             merged[-1] += " " + stripped
             continue
         merged.append(stripped)
     return merged
-
-
-def _looks_like_section_title(s: str) -> bool:
-    if not s:
-        return True
-    s = s.strip()
-    if len(s) > 150 or len(s.split()) > 20:
-        return False
-    if not s[:1].isupper():
-        return False
-    if s.endswith(","):
-        return False
-    return True
 
 
 def _assign_levels(subsections: list[dict]) -> None:
@@ -1957,14 +1932,10 @@ def _assign_levels(subsections: list[dict]) -> None:
             has_digit = True
         elif len(m) == 1 and m.isalpha() and m != "i":
             has_letter = True
-    later_marked = any((s.get("marker") or "").strip() for s in subsections[1:])
     for i, sub in enumerate(subsections):
         m = (sub.get("marker") or "").strip("().").lower()
         if not m:
-            if i == 0 and later_marked:
-                sub["level"] = 0
-            else:
-                sub["level"] = 1 if has_digit else 0
+            sub["level"] = 1 if has_digit else 0
         elif m.isdigit():
             sub["level"] = 1
         elif m in _ROMAN:
@@ -1979,8 +1950,10 @@ def _assign_levels(subsections: list[dict]) -> None:
 
 
 def _add_subsections(section: dict, text: str) -> None:
-    pieces = _marker_split(text)
-    for mk, txt in pieces:
+    text = re.sub(r"(?<=[—–:.;])\s*\n\s*(?=\()", "\n\n", text)
+    for mk, txt in _marker_split(text):
+        if not txt:
+            continue
         txt = re.sub(r"\s+", " ", txt).strip()
         section["subsections"].append({"level": 0, "marker": mk, "text": txt})
 
@@ -2025,23 +1998,11 @@ def parse_statute_items(body: str) -> list[dict]:
     start = _find_content_start(blocks)
     if start > 0:
         blocks = blocks[start:]
-
     items: list[dict] = []
     current: dict | None = None
-    body_parts: list[str] = []
-
-    def flush():
-        nonlocal body_parts
-        if current is None:
-            return
-        if body_parts:
-            _add_subsections(current, "\n\n".join(body_parts))
-            body_parts = []
-
     for block in blocks:
         pm = _PART_RE.match(block)
         if pm and len(block) < 300:
-            flush()
             items.append(
                 {
                     "type": "part",
@@ -2059,74 +2020,30 @@ def parse_statute_items(body: str) -> list[dict]:
             except ValueError:
                 num = None
             if num is not None and num < 1000:
-                flush()
                 rest = sm.group(2).strip()
-
                 if "\n" in rest:
-                    rest_lines = rest.split("\n")
-                    head = rest_lines[0].strip()
-                    tail_lines = rest_lines[1:]
-
-                    # Merge multi-line titles if the next line starts with a lowercase letter
-                    while tail_lines:
-                        nxt = tail_lines[0].strip()
-                        if nxt and nxt[0].islower():
-                            head += " " + nxt
-                            tail_lines.pop(0)
-                        else:
-                            break
-                    tail = "\n".join(tail_lines)
+                    head, _, tail = rest.partition("\n")
                 else:
                     m2 = re.match(r"^(.{3,80}?)(?:\.\s+)([A-Z].*)$", rest, re.S)
                     if m2 and len(m2.group(1).split()) <= 12:
                         head, tail = m2.group(1), m2.group(2)
                     else:
                         head, tail = rest, ""
-
-                pending = ""
-                m_trail = _HEAD_TRAILING_DIGIT_MARKER_RE.search(head)
-                if m_trail and _looks_like_section_title(
-                    head[: m_trail.start()].strip()
-                ):
-                    pending = m_trail.group(1)
-                    head = head[: m_trail.start()].rstrip()
-
-                if not _looks_like_section_title(head):
-                    m_split = re.match(
-                        r"^([A-Z][^()\n]{2,79}?)\s+"
-                        r"(\(\d{1,3}\)|\([a-z]\)|\([ivxlc]{2,}\))\s+(\S.*)$",
-                        head,
-                        re.S,
-                    )
-                    if m_split and _looks_like_section_title(m_split.group(1).strip()):
-                        new_tail = f"{m_split.group(2)} {m_split.group(3)}"
-                        tail = (new_tail + ("\n" + tail if tail else "")).strip()
-                        head = m_split.group(1).strip()
-                        pending = ""
-
-                if not _looks_like_section_title(head):
-                    tail = (head + ("\n" + tail if tail else "")).strip()
-                    head = ""
-
                 sec = {
                     "type": "section",
                     "number": raw_num,
                     "title": _clean(head).rstrip("."),
                     "subsections": [],
                 }
+                if tail.strip():
+                    _add_subsections(sec, tail.strip())
                 items.append(sec)
                 current = sec
-                if pending:
-                    tail = f"{pending}\n\n{tail}" if tail else pending
-                if tail.strip():
-                    body_parts.append(tail.strip())
                 continue
         if current is not None:
-            body_parts.append(block)
+            _add_subsections(current, block)
         else:
             items.append({"type": "text", "body": block})
-
-    flush()
     for it in items:
         if it.get("type") == "section":
             _assign_levels(it.get("subsections", []))
@@ -2150,13 +2067,17 @@ def statute_toc(items: list[dict]) -> list[dict]:
                 current = {"type": "part", "number": "", "title": "", "sections": []}
                 toc.append(current)
             current["sections"].append(
-                {"number": str(it.get("number", "")), "title": it.get("title", "")}
+                {
+                    "number": str(it.get("number", "")),
+                    "title": it.get("title", ""),
+                }
             )
     return toc
 
 
 def build_statute_view(doc: dict) -> dict:
     raw = re.sub(r"[ \t]+", " ", doc.get("body") or "")
+    raw = raw.replace("\r\n", "\n").replace("\r", "\n")
     header = parse_act_header(raw)
     body_text = "\n".join(header["remaining_lines"])
     body_text = _normalize_markers(body_text)
@@ -2227,29 +2148,45 @@ def health():
     )
 
 
-@app.get("/api/debug/search")
-def api_debug_search():
-    q = _clean(request.args.get("q", ""))[:120]
-    kind = request.args.get("kind", "case")
-    if not q:
-        return jsonify({"error": "Missing q"}), 400
-    params = {
-        "page": 1,
-        "search__all": f'("{q}")',
-        "doc_type": "legislation" if kind == "statute" else "judgment",
-    }
-    rate_limit()
-    try:
-        resp = KL._session.get(KL.BASE + KL.SEARCH_API, params=params, timeout=(4, 14))
-    except requests.RequestException as exc:
-        return jsonify({"error": f"network: {exc.__class__.__name__}"}), 502
+@app.get("/api/debug/statute")
+def api_debug_statute():
+    """Debug: shows raw body, normalized body, and parsed section data."""
+    url = canonical_eklr_url(request.args.get("url", ""))
+    if not url:
+        return jsonify({"error": "Missing url"}), 400
+    doc = get_document(url)
+    if not doc or not doc.get("body"):
+        return jsonify({"error": "Not cached"}), 404
+
+    raw = re.sub(r"[ \t]+", " ", doc["body"])
+    raw = raw.replace("\r\n", "\n").replace("\r", "\n")
+    header = parse_act_header(raw)
+    body_text = "\n".join(header["remaining_lines"])
+    normalized = _normalize_markers(body_text)
+
+    # Show first 20 blocks after split
+    blocks = [b.strip() for b in re.split(r"\n{2,}", normalized) if b.strip()]
+
+    view = build_statute_view(doc)
+    # Find section 2
+    sec2 = None
+    for it in view.get("items", []):
+        if it.get("type") == "section" and it.get("number") == "2":
+            sec2 = it
+            break
+
     return jsonify(
         {
-            "url": resp.url,
-            "status": resp.status_code,
-            "content_type": resp.headers.get("Content-Type", ""),
-            "preview": (resp.text or "")[:2000],
-            "parsed_count": len(parse_search_response(resp)),
+            "title": header.get("title"),
+            "body_length": len(raw),
+            "remaining_lines_count": len(header["remaining_lines"]),
+            "normalized_length": len(normalized),
+            "block_count": len(blocks),
+            "first_10_blocks": blocks[:10],
+            "section_2": sec2,
+            "total_sections": sum(
+                1 for i in view.get("items", []) if i.get("type") == "section"
+            ),
         }
     )
 
@@ -2296,14 +2233,12 @@ def api_search():
         except Exception as exc:
             live_error = str(exc)
             log.exception("live search failed")
-
     merged, seen = [], set()
     for d in live + cached:
         url = d.get("url")
-        if url and url not in seen and d.get("kind") == kind:
+        if url and url not in seen:
             seen.add(url)
             merged.append(d)
-
     for d in merged[:8]:
         if not d.get("body") and d.get("url"):
             _enqueue_fetch(d["url"], d.get("kind", kind))
@@ -2437,8 +2372,6 @@ def api_case_structured():
     url = canonical_eklr_url(request.args.get("url", ""))
     if not url:
         return jsonify({"error": "Invalid URL"}), 400
-    if not is_case_url(url):
-        return jsonify({"error": "Not a case URL"}), 400
     doc = ensure_document(url, "case")
     if not doc:
         return jsonify({"error": "Could not fetch document"}), 502
@@ -2450,8 +2383,6 @@ def api_statute_structured():
     url = canonical_eklr_url(request.args.get("url", ""))
     if not url:
         return jsonify({"error": "Invalid URL"}), 400
-    if not is_act_url(url):
-        return jsonify({"error": "Not an act URL"}), 400
     doc = ensure_document(url, "statute")
     if not doc:
         return jsonify({"error": "Could not fetch document"}), 502
