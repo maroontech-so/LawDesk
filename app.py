@@ -2431,17 +2431,29 @@ def _port_free(host: str, port: int) -> bool:
 
 
 if __name__ == "__main__":
-    target = PORT
-    if not _port_free(HOST, PORT):
-        for offset in range(1, 21):
-            if _port_free(HOST, PORT + offset):
-                target = PORT + offset
-                break
-        else:
-            log.error("No free port in %d..%d", PORT, PORT + 20)
-            sys.exit(1)
-        log.warning(
-            "Port %d busy — using %d. Open http://%s:%d", PORT, target, HOST, target
-        )
-    log.info("LawDesk: http://%s:%d  (pymupdf=%s)", HOST, target, _HAS_FITZ)
-    app.run(host=HOST, port=target, debug=False, threaded=True, use_reloader=False)
+    # Render/Railway/Fly set PORT env var — bind to 0.0.0.0 on that exact port.
+    # Locally PORT is unset, so we default to 5000 with the port-scan fallback.
+    cloud_port = os.getenv("PORT")
+
+    if cloud_port:
+        target_host = "0.0.0.0"
+        target_port = int(cloud_port)
+        log.info("LawDesk (cloud): http://%s:%d  (pymupdf=%s)",
+                 target_host, target_port, _HAS_FITZ)
+        app.run(host=target_host, port=target_port,
+                debug=False, threaded=True, use_reloader=False)
+    else:
+        target = PORT
+        if not _port_free(HOST, PORT):
+            for offset in range(1, 21):
+                if _port_free(HOST, PORT + offset):
+                    target = PORT + offset
+                    break
+            else:
+                log.error("No free port in %d..%d", PORT, PORT + 20)
+                sys.exit(1)
+            log.warning("Port %d busy — using %d. Open http://%s:%d",
+                        PORT, target, HOST, target)
+        log.info("LawDesk: http://%s:%d  (pymupdf=%s)", HOST, target, _HAS_FITZ)
+        app.run(host=HOST, port=target, debug=False, threaded=True,
+                use_reloader=False)
