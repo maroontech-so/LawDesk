@@ -1,31 +1,8 @@
-# ============================================================
-# LawDesk — Python dependencies
-# ============================================================
-#
-# Python version:
-#   Tested on Python 3.11. Requires Python 3.10+ because the code
-#   uses PEP 604 union syntax (`int | None`) in type hints alongside
-#   `from __future__ import annotations`.
-#
-# Install:
-#   python -m pip install --upgrade pip
-#   python -m pip install -r requirements.txt
-#
-# ============================================================
-
-# ── Core web framework ──────────────────────────────────────
 Flask==3.0.3
 flask-cors==4.0.1
 Werkzeug==3.0.4
-
-# ── HTTP client ─────────────────────────────────────────────
 requests==2.32.3
-
-# ── HTML parsing ────────────────────────────────────────────
 beautifulsoup4==4.12.3
-
-# ── Environment variables (.env) ────────────────────────────
 python-dotenv==1.0.1
-
-# ── PDF text extraction (optional fallback for scanned acts) ─
 PyMuPDF==1.24.10
+gunicorn==22.0.0
